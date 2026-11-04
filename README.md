@@ -18,6 +18,12 @@
 ![Simulated](https://img.shields.io/badge/phase%201-simulated%20SEM%2C%20exact%20truth-2a78d6?style=for-the-badge)
 ![Real](https://img.shields.io/badge/phase%202-real%20SEM%20defects-6250d6?style=for-the-badge)
 
+<br/>
+
+<img src="results/figures/banner.png" width="100%" alt="simulated SEM with design and exact contour at 64, 8 and 2 frames; real SEM defects with DCNv3 predictions">
+
+<sub><b>Left:</b> simulated SEM at 64 → 2 frames with the design (dashed cyan) and the exact printed contour (red). <b>Right:</b> real SEM defects from Carinthia-S with the DCNv3 prediction (green) vs the annotation (dashed white); representative median-Dice cases per class.</sub>
+
 </div>
 
 ---
@@ -202,6 +208,10 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 ### E9 · Carinthia-S
 **[Carinthia-S](https://zenodo.org/records/16895427)** contains 4,591 real SEM images of defects on unstructured wafers in six classes; class 6 has no visible defect and serves as the nuisance set. It has **no CD/EPE truth**, so it tests the operators on real image statistics through defect segmentation.
 
+![carinthia](results/carinthia/carinthia_grid.png)
+
+<sub>Real Carinthia-S test images with annotation and DCNv3 prediction: successes, failures (small particles, multi-part scratches), the two rarest classes, and no-defect (nuisance) images.</sub>
+
 **Setup:** SEM-only U-Net shell, BCE + soft Dice, identical budget for every operator; stratified split (test: 654 defect images, 34 no-defect images); checkpoint and detection threshold chosen on validation.
 
 | Operator | Seeds | Test Dice (defect images) | Capture / nuisance |
@@ -210,8 +220,6 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 | **DCNv3** | 3 | **0.9562** (0.9558–0.9569) | 100% / 2.9–5.9% |
 | DCNv2 | 1 | 0.9499 | 100% / 2.9% |
 | DCNv4 | 1 | 0.9529 | 100% / 2.9% |
-
-![carinthia](results/carinthia/carinthia_grid.png)
 
 > [!IMPORTANT]
 > **On real SEM images DCNv3 helped, slightly but consistently:** its worst seed (0.9558) beats U-Net's best (0.9525). Real-image noise is far below the simulator's and spatially correlated (relative noise 0.018 vs 0.08–1.06 simulated), which may be why the operator matters here but not in Phase 1. Classes 2 and 5 have one test image each, so per-class results for them are anecdotal.
