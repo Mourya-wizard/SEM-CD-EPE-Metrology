@@ -1,4 +1,6 @@
-# Interview notes (answers use this repo's measured results; all CD/EPE data are simulated)
+# Metrology Q&A
+
+Answers draw on the measured results in this repository; all CD/EPE data are simulated.
 
 **Why are precision and accuracy different in CD-SEM?**
 Precision is how much repeated measurements of the *same* feature scatter (here: 20 noise seeds on fixed geometry);
@@ -11,7 +13,7 @@ frames is 0.88 nm 3 sigma, but its TMU-style figure is 6.73 nm: most of the erro
 TMU regresses measured vs reference values across many real features and process conditions and reports the
 residual scatter about the fitted line, so it includes linearity errors and pattern-dependent bias that a
 repeatability test on one feature never sees. Here the learned models' precision at 64 frames is 0.45-0.47 nm, but
-their TMU-style CD is 6.29-6.30 nm (classical 6.73 nm). My "TMU-style" assumes zero reference uncertainty because
+their TMU-style CD is 6.29-6.30 nm (classical 6.73 nm). The "TMU-style" figure here assumes zero reference uncertainty because
 simulated truth is exact; a real TMU needs a reference tool (AFM/TEM) and Mandel regression.
 
 **Why can CAD input hide real EPE?**
@@ -41,13 +43,13 @@ Measurement noise adds variance: raw = true + noise. At 2 frames, raw LER was 2.
 Subtracting a noise floor helps only if the floor is estimated correctly: the PSD high-frequency plateau assumes
 white noise, but blur and filtering correlate the noise along the edge, so it under-estimates the noise; a
 repeat-noise estimate (two noise realisations) gave 2.61 nm with SNR 1.9, flagged unreliable. For LCDU the excess
-(raw 10.1-11.1 vs true 8.3 nm) was mostly systematic per-image error, not noise, so noise correction could not fix it.
+(raw 10.1-11.4 vs true 8.3 nm) was mostly systematic per-image error, not noise, so noise correction could not fix it.
 
 **What did DCNv2, DCNv3 and DCNv4 change here, and which result would you trust?**
 Same U-Net shell, same data and schedule, parameters matched within 10%, only the operator swapped. On simulated
 metrology nothing changed measurably: DCNv3 (3 seeds) TMU-style 6.27-6.31 nm vs U-Net (3 seeds) 6.28-6.32 nm; DCNv2
 and DCNv4 (single seed) 6.29-6.30 nm. On real Carinthia-S defect segmentation DCNv3 was slightly but consistently
-better (Dice 0.9558-0.9569 vs 0.9500-0.9525 over 3 seeds each). I trust the 3-seed comparisons, treat DCNv2/DCNv4 as
+better (Dice 0.9558-0.9569 vs 0.9500-0.9525 over 3 seeds each). The 3-seed comparisons are the reliable ones; DCNv2/DCNv4 are
 single-seed indications, and note that DCNv4 is a PyTorch reimplementation, not the official kernel.
 
 **What changes when moving from simulated to real tool data?**

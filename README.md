@@ -4,7 +4,7 @@
 
 ### Design-based CD and edge-placement metrology from low-dose SEM images, with deep contour models and a C++/CUDA edge kernel
 
-*Engineered against a physics-inspired SEM simulator with **exact nanometre ground truth** on public LithoBench layouts, and put to the test on **4,591 real SEM defect images** (Carinthia-S).*
+*Developed and evaluated on a physics-based SEM simulator with **exact nanometre ground truth** (public LithoBench layouts), with an additional evaluation on **4,591 real SEM defect images** (Carinthia-S).*
 
 <br/>
 
@@ -31,15 +31,15 @@
 ## TL;DR
 
 - **What:** a design-based CD-SEM metrology engine. It aligns a low-dose SEM image to its layout, extracts sub-pixel contours, measures **critical dimension (CD)** and **edge placement error (EPE)** on design-defined gauges, flags failed measurements, and runs the per-edge refinement step in a **custom C++/CUDA kernel**.
-- **How it was evaluated:** **10 experiments in two phases**, scored the way a metrology engineer would (bias, regression slope, precision 3σ, TMU-style uncertainty, dose response, failure rate), not by segmentation IoU.
+- **Evaluation:** **10 experiments in two phases**, measuring bias, regression slope, precision (3σ), TMU-style uncertainty, dose response and failure rate against exact ground truth.
   - **Phase 1, simulated SEM:** an SEM forward model on top of LithoBench lithography data gives **exact edge truth** under exposure-like process changes, local edge changes, roughness and 2–64-frame doses. 436 unseen standard-cell tiles form the test set.
-  - **Phase 2, real SEM:** the same network shells segment defects in **4,591 real SEM images** (Carinthia-S).
-- **Key results** (all measured):
+  - **Phase 2, real SEM:** the same network architectures are evaluated on defect segmentation in **4,591 real SEM images** (Carinthia-S).
+- **Key results:**
   - 📉 Learned contour models reach the baseline's 64-frame CD precision (0.88 nm 3σ) at **14–17 frames, about 4x lower dose**, and **0.45 nm at 64 frames**.
   - 🎯 CD TMU-style **6.29 nm vs 6.73 nm** and failure rate **4.2% vs 6.8%** against a validation-tuned, offset-calibrated classical edge tracer.
   - 🧭 **Registration, not the edge model, limits EPE:** EPE TMU-style **8.2 nm → 2.7 nm** with ideal registration.
   - ⚡ The CUDA texture kernel refines **1M edge points in 1.75 ms** on a 4096 px image, **62x** faster than 48 CPU threads (**11x** including transfer).
-- **The honest twist:** deformable convolutions (DCNv2/v3/v4) gave **no measurable gain** on simulated metrology. U-Net and DCNv3 overlap across 3 seeds. Yet on **real SEM defects** DCNv3 won on every seed (Dice 0.956 vs 0.951). And the CAD input did not improve accuracy, but **slightly reduced sensitivity** to real contact-size changes.
+- **Notable findings:** deformable convolutions (DCNv2/v3/v4) showed **no measurable gain** on simulated metrology (U-Net and DCNv3 overlap across 3 seeds), whereas on **real SEM defects** DCNv3 outperformed U-Net on every seed (Dice 0.956 vs 0.951). CAD input did not improve accuracy and **slightly reduced sensitivity** to real contact-size changes.
 
 <div align="center">
 
@@ -51,18 +51,18 @@
 
 ---
 
-## 1 · The question
+## 1 · Motivation
 
-**Critical dimension (CD)** is the printed size of a feature; **edge placement error (EPE)** is the signed distance from a design edge to the printed edge. Design-based metrology aligns the SEM image to the layout and measures on gauges defined by the design. Lower electron dose raises throughput and reduces damage, but adds shot noise. That raises four engineering questions:
+**Critical dimension (CD)** is the printed size of a feature; **edge placement error (EPE)** is the signed distance from a design edge to the printed edge. Design-based metrology aligns the SEM image to the layout and measures on gauges defined by the design. Lower electron dose increases throughput and reduces sample damage, but adds shot noise. This project addresses four questions:
 
 1. **Can a learned contour model measure CD/EPE better than classical edge tracing,** and at how much lower dose?
 2. **Do deformable convolutions (DCNv2, v3, v4) help,** under matched parameters and training?
 3. **Does feeding the design (CAD) to the model help, or does it pull measurements toward the design and hide real error?**
-4. **Where does the error actually come from:** noise, the edge model, or registration?
+4. **Which error source dominates:** noise, the edge model, or registration?
 
-A segmentation score cannot answer these. A model can reach high IoU and still be biased, insensitive to real process changes, or noisy at low dose, so every result here is a metrology metric against exact truth.
+Segmentation scores do not answer these questions: a model can achieve high IoU while remaining biased, insensitive to process changes, or noisy at low dose. All results are therefore reported as metrology metrics against exact ground truth.
 
-## 2 · What we built
+## 2 · System overview
 
 ```mermaid
 flowchart LR
@@ -95,7 +95,7 @@ flowchart LR
 | 🔵 **SEM forward model** (`src/sem_sim.py`) | Material contrast, an edge-bloom peak with configurable offset, Gaussian beam blur, low-order distortion, stage offset, Poisson shot noise for 2–64 frames plus detector noise. GPU-batched; a seed reproduces image and truth exactly. |
 | 🟢 **Registration** (`src/registration.py`) | Renders the CAD with the nominal SEM model and aligns it by FFT cross-correlation. The same estimate is used by every method. |
 | 🟢 **Gauges** (`src/gauges.py`) | Paired CD on straight design segments, 1D/2D EPE probes along design normals, 32-ray contact gauges; GDS export with a round-trip check. |
-| 🟢 **Classical baseline** (`src/classical.py`) | Gaussian filter, bloom-peak search, outer-slope threshold; smoothing and threshold tuned per dose on validation and an edge offset calibrated, like a real recipe. |
+| 🟢 **Classical baseline** (`src/classical.py`) | Gaussian filter, bloom-peak search, outer-slope threshold; smoothing and threshold tuned per dose on validation, with a calibrated edge offset (analogous to recipe calibration). |
 | 🟢 **Learned models** (`src/models.py`, `src/operators.py`) | One U-Net shell (5.6 M parameters) predicting a truncated signed distance map from SEM + registered CAD. Only the operator block changes: Conv, DCNv2, DCNv3, DCNv4. |
 | 🟠 **C++/CUDA kernel** (`cuda/`) | The 1D edge refinement in C++/OpenMP, CUDA with manual bilinear sampling, and CUDA with hardware texture filtering; pybind11 interface; float64 parity checks. |
 
@@ -105,14 +105,14 @@ flowchart LR
 |:-:|---|:-:|---|
 | **E1** | Truth and simulator checks | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Does a direct profile measurement recover the defined truth? Does a known bloom offset give the expected bias? |
 | **E2** | Registration | ![s](https://img.shields.io/badge/-simulated-2a78d6) | How well is the SEM aligned to the design, and why is a uniform shift not an EPE test? |
-| **E3** | Classical baseline | ![s](https://img.shields.io/badge/-simulated-2a78d6) | How good is a fairly tuned, calibrated edge tracer? |
-| **E4** | Operator screening (validation) | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Which deformable operator to select, before touching the test set? |
-| **E5** | **Test-set metrology** | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Slope, offset, 3σ, TMU-style, failure and dose benefit for every method |
-| **E6** | CAD vs SEM-only | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Does CAD help, or does it hide real change? |
+| **E3** | Classical baseline | ![s](https://img.shields.io/badge/-simulated-2a78d6) | What accuracy and precision does a tuned, calibrated edge tracer achieve? |
+| **E4** | Operator screening (validation) | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Which operator is selected on validation data, before test evaluation? |
+| **E5** | **Test-set metrology** | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Slope, offset, precision, TMU-style, failure rate and dose benefit for every method |
+| **E6** | CAD vs SEM-only | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Does CAD input improve accuracy, or reduce sensitivity to real change? |
 | **E7** | Roughness and LCDU | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Does noise correction recover true LER and LCDU? |
-| **E8** | Confidence | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Does seed spread + profile quality predict which measurements are wrong? |
-| **E9** | **Carinthia-S defects** | ![r](https://img.shields.io/badge/-REAL%20SEM-6250d6) | Do the same operators help on real SEM images? |
-| **E10** | C++/CUDA kernel | ![h](https://img.shields.io/badge/-hardware-eb6834) | How fast is the edge refinement, and does texture filtering keep parity? |
+| **E8** | Confidence | ![s](https://img.shields.io/badge/-simulated-2a78d6) | Do seed spread and edge-profile quality predict measurement error? |
+| **E9** | **Carinthia-S defects** | ![r](https://img.shields.io/badge/-REAL%20SEM-6250d6) | Do the operator differences hold on real SEM images? |
+| **E10** | C++/CUDA kernel | ![h](https://img.shields.io/badge/-hardware-eb6834) | What speed-up does the kernel achieve, and does texture filtering preserve numerical parity? |
 
 ---
 
@@ -133,8 +133,8 @@ The simulated images have **exact edge truth**, so accuracy, precision and sensi
 | Exposure-like sweep, median CD change | +12.4 … −12.9 nm (training range), +20.7 / −21.4 nm (held out) |
 
 ### E2 · Registration
-- Against a template of the **printed** pattern the registration recovers stage offset + distortion to **0.3 px** median.
-- Against the **CAD** template the error is ~3 px median: LithoBench's printed vias are offset from the design by about (−1, +2) px, and line ends pull back. Uniform placement is unobservable by design-based registration.
+- Against a template of the **printed** pattern the registration recovers stage offset + distortion to **0.28–0.32 px** median (2 and 64 frames, 40 validation crops; `results/figures/traceability.json`).
+- Against the **CAD** template the error is ~2.6 px median: LithoBench's printed vias sit (−1.0, +2.0) px from the design (median of 123 vias), and line ends pull back. Uniform placement is unobservable by design-based registration.
 - **A uniform pattern shift is absorbed:** a true +3 nm EPE change was measured as −0.7…+0.0 nm, so sensitivity is tested with exposure-like and local edge changes instead.
 
 ### E3 · Classical baseline
@@ -177,7 +177,7 @@ CD gauges at 8 frames inside the exposure range, estimated registration. U-Net a
 | DCNv3, ideal registration | **1.2%** | **2.66** | **0.974** |
 
 > [!IMPORTANT]
-> **Registration is the dominant EPE error.** With ideal registration DCNv3 cuts EPE TMU-style from 8.25 to 2.66 nm. At outer exposure values the printed pattern departs from the design, the CAD-template registration mis-locks, and CD failures jump to ~46–48% for **every** method.
+> **Registration is the dominant EPE error.** With ideal registration DCNv3 cuts EPE TMU-style from 8.25 to 2.66 nm. At outer exposure values the printed pattern departs from the design, the CAD-template registration mis-locks, and CD failure rates rise to ~46–48% for **every** method.
 
 ### E6 · CAD vs SEM-only
 | DCNv3 (seed 1) | CD TMU-style (nm) | Contact-CD slope (95% CI) | EPE slope |
@@ -185,11 +185,21 @@ CD gauges at 8 frames inside the exposure range, estimated registration. U-Net a
 | SEM + CAD | 6.27 | 0.948 (0.941–0.954) | 0.848 |
 | SEM only | 6.30 | **0.968** (0.962–0.974) | 0.861 |
 
-CAD did **not** improve accuracy, and the contact-CD regression slope is lower with CAD: the model under-responds to real contact-size changes by about 2%. Treat this as preliminary evidence (single seed for SEM-only; CI from tile resampling).
+CAD did **not** improve accuracy, and the contact-CD regression slope is lower with CAD: the model under-responds to real contact-size changes by about 2%. This result is preliminary (single seed for the SEM-only model; CI from tile resampling).
 
 ### E7 · Roughness and LCDU
 - **LER** (classical, line/space set, σ = 1 nm): raw 2.98 nm vs true 2.70 nm (3σ) at 2 frames. The **PSD-plateau correction fails** because filtering and blur correlate noise along the edge; a **repeat-noise correction** gives 2.61 nm but is flagged unreliable (SNR 1.9 < 2).
-- **LCDU** (test contacts): measured 10.1–11.1 nm vs true 8.3 nm for every method. The noise term is only 0.17–1.4 nm, so the excess is systematic per-image error, which noise correction cannot remove.
+- **Learned models smooth real roughness.** At 64 frames, where noise is negligible, U-Net and DCNv3 report LER and LWR **4.5–6.8% below truth**, while the classical edge tracer stays within **±0.5%**. At 2 frames their raw LER lands near truth only because added noise offsets the smoothing.
+
+| LER / LWR bias at 64 frames (vs truth) | Classical | U-Net (seed 1) | DCNv3 (seed 1) |
+|---|:--:|:--:|:--:|
+| LER, σ = 1 nm | +0.2% | −5.0% | −5.7% |
+| LER, σ = 2 nm | +0.4% | −6.0% | −4.5% |
+| LWR, σ = 2 nm | 0.0% | −6.8% | −5.1% |
+
+- **LCDU** (test contacts): measured 10.1–11.4 nm vs true 8.3 nm for every method. The noise term is only 0.17–1.4 nm, so the excess is systematic per-image error, which noise correction cannot remove.
+
+![lcdu](results/figures/lcdu_test.png)
 
 <details><summary><b>LER/LWR plot</b></summary>
 
@@ -222,7 +232,7 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 | DCNv4 | 1 | 0.9529 | 100% / 2.9% |
 
 > [!IMPORTANT]
-> **On real SEM images DCNv3 helped, slightly but consistently:** its worst seed (0.9558) beats U-Net's best (0.9525). Real-image noise is far below the simulator's and spatially correlated (relative noise 0.018 vs 0.08–1.06 simulated), which may be why the operator matters here but not in Phase 1. Classes 2 and 5 have one test image each, so per-class results for them are anecdotal.
+> **On real SEM images DCNv3 outperformed U-Net by a small but consistent margin:** its lowest-scoring seed (0.9558) exceeds U-Net's highest (0.9525). Real-image noise is far below the simulator's and spatially correlated (relative noise 0.018 vs 0.08–1.06 simulated), which may explain why the operator choice matters here but not in Phase 1. Classes 2 and 5 have one test image each, so their per-class results are not statistically meaningful.
 
 ---
 
@@ -236,24 +246,25 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 | **CUDA, texture filtering** | **1.75 ms** | **7.2 ms** |
 
 - **Parity vs float64:** manual sampling max 4.5e-5 px; texture max 0.008 px on SEM data but a **5.4 px outlier** on synthetic data, caused by the hardware's 8-bit filter weights.
-- **Where the GPU does not pay off:** for 1e4 points on a 4096 px image, uploading the image makes the GPU **5x slower** than the CPU.
+- **Small workloads:** for 1e4 points on a 4096 px image, the image upload makes the GPU path **5x slower** than the CPU.
 - **Memory locality:** sorting points into 32 px tiles cuts the kernel to 0.68 ms (manual) and 0.29 ms (texture).
 
 ![kernel runtime](results/cuda_kernel/kernel_runtime.png)
 
 ---
 
-## 7 · What we learned
+## 7 · Summary of findings
 
 | | Takeaway | Evidence |
 |:-:|---|---|
 | ✅ | **Learned contour models give about 4x dose reduction at equal CD precision,** with lower TMU-style and failure rate. | E5 |
-| ✅ | **The C++/CUDA kernel makes edge refinement ~62x faster** than 48 CPU threads, and PyTorch is not competitive. | E10 |
+| ✅ | **The C++/CUDA kernel makes edge refinement ~62x faster** than 48 CPU threads; PyTorch `grid_sample` is 22x slower than the texture kernel. | E10 |
 | ⚖️ | **Deformable convolutions:** no gain on simulated metrology, a small consistent gain on real SEM defects. | E4, E5, E9 |
 | ⚖️ | **CAD input:** no accuracy gain, and a lower contact-CD slope, i.e. some pull toward the design. | E6 |
 | ⚠️ | **Registration, not the edge model, dominates EPE,** and it fails outside the process window. | E2, E5 |
-| ⚠️ | **Noise correction is not a free lunch:** PSD-plateau LER correction fails under correlated noise; LCDU excess is systematic. | E7 |
-| ⚠️ | **Seed-spread confidence did not rank errors;** only the "any seed failed" flag was useful. | E8 |
+| ⚠️ | **Noise correction has clear limits:** PSD-plateau LER correction fails under correlated noise, and the LCDU excess is systematic. | E7 |
+| ⚠️ | **Learned contour models under-report roughness** by 4.5–6.8% at low noise; the classical tracer is unbiased. | E7 |
+| ⚠️ | **Seed-spread confidence did not rank errors;** only the any-seed-failure flag improved risk-coverage. | E8 |
 
 ---
 
@@ -307,6 +318,7 @@ python src/carinthia.py split | train --run <yaml> | aggregate | noise  # E9
 cuda\build.bat                                      # build the C++/CUDA extension (Windows: CMake + nvcc 12.8 + MSVC)
 python benchmarks/bench_kernel.py parity            # E10 parity
 python tools/reproduce_results.py                   # all evaluations, tables and figures after training
+python tools/roughness_learned.py screen_dcnv3_cad_s1 1   # learned-model LER/LWR (E7)
 python tools/make_dashboard.py                      # results/figures/hero.png
 ```
 </details>
@@ -357,7 +369,7 @@ sem-cd-epe-metrology/
 
 - **Simulated SEM:** a controlled forward model, not an electron-matter simulator. No charging, resist shrinkage, focus variation, real scan distortion, drift or tool matching. Nothing here is validated on a production CD-SEM.
 - **Node:** LithoBench is 32/45 nm-class data; no claim about advanced nodes.
-- **Seeds:** U-Net and DCNv3 have 3 seeds; DCNv2, DCNv4 and the SEM-only model have 1. Learned-model roughness and a physics-based (Monte Carlo) SEM check were not run.
+- **Seeds:** U-Net and DCNv3 have 3 seeds; DCNv2, DCNv4 and the SEM-only model have 1. A physics-based (Monte Carlo) SEM check was not run.
 - **Real data:** Carinthia-S tests segmentation only; its rare classes have 1–8 test images.
 
 More: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) · full tables: [docs/RESULTS.md](docs/RESULTS.md) · design discussion (precision vs accuracy, TMU, CAD bias, edge models): [docs/METROLOGY_QA.md](docs/METROLOGY_QA.md)

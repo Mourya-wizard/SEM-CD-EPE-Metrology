@@ -1,0 +1,59 @@
+{
+ "registration_validation_crops": {
+  "cad_template_2fr": {
+   "centre_err_median_px": 2.609493921289242,
+   "centre_err_p90_px": 6.1902347968307625,
+   "corner_err_median_px": 3.4405717007694125,
+   "n_crops": 40
+  },
+  "cad_template_64fr": {
+   "centre_err_median_px": 2.6058587331157255,
+   "centre_err_p90_px": 5.931817522599604,
+   "corner_err_median_px": 3.438862381740706,
+   "n_crops": 40
+  },
+  "printed_template_2fr": {
+   "centre_err_median_px": 0.31730585230256547,
+   "centre_err_p90_px": 0.8510374928538613,
+   "corner_err_median_px": 1.4023491362054652,
+   "n_crops": 40
+  },
+  "printed_template_64fr": {
+   "centre_err_median_px": 0.2833555544417955,
+   "centre_err_p90_px": 0.8647287990048238,
+   "corner_err_median_px": 1.3607606440048439,
+   "n_crops": 40
+  }
+ },
+ "printed_minus_design_centroid_offset": {
+  "ViaSet": {
+   "n_features": 123,
+   "dx_median_px": -1.0312215132178153,
+   "dy_median_px": 1.9937163375224145,
+   "dx_sd_px": 1.1881320064043293,
+   "dy_sd_px": 0.8589426405736599
+  },
+  "StdContactTest": {
+   "n_features": 393,
+   "dx_median_px": -0.3613019299966709,
+   "dy_median_px": 2.3956439987464364,
+   "dx_sd_px": 3.5496373317747523,
+   "dy_sd_px": 3.5984485497686016
+  },
+  "MetalSet": {
+   "n_features": 82,
+   "dx_median_px": -0.5665727832217726,
+   "dy_median_px": 0.24158802462363838,
+   "dx_sd_px": 1.583012007773694,
+   "dy_sd_px": 1.667777605623151
+  },
+  "StdMetal": {
+   "n_features": 70,
+   "dx_median_px": -0.3521361200221804,
+   "dy_median_px": -0.12863720480203256,
+   "dx_sd_px": 1.5472934174670432,
+   "dy_sd_px": 1.8590955971931957
+  }
+ },
+ "note": "1 px = 1 nm; registration uses the frozen config (coarse translation, matched template)"
+}

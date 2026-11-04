@@ -1,4 +1,4 @@
-# Frozen interfaces (after M3)
+# Architecture and interfaces
 
 These conventions are frozen. Changing any of them invalidates cached data and results; if a change is unavoidable,
 document the reason and rerun the affected evaluations.

@@ -82,9 +82,14 @@ def main():
     run("src/carinthia.py", "aggregate")
     run("src/carinthia.py", "noise")
 
-    # 6. tables and figures
+    # 6. learned-model roughness (line/space set), traceability diagnostics, tables and figures
+    for r in ("screen_dcnv3_cad_s1", "screen_conv_cad_s1"):
+        for sg in (1, 2):
+            run("tools/roughness_learned.py", r, sg)
+    run("tools/trace_numbers.py")
     run("tools/results_snapshot.py")
     run("src/plots.py", "figures")
+    run("tools/plot_lcdu.py")
     run("tools/make_dashboard.py")
     run("tools/make_banner.py")
     print("[reproduce] done: results/ and docs/RESULTS.md are up to date", flush=True)
