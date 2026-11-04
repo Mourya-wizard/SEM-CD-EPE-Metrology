@@ -4,7 +4,7 @@
 
 ### Design-based CD and edge-placement metrology from low-dose SEM images, with deep contour models and a C++/CUDA edge kernel
 
-*Built and evaluated on a **simulated SEM with exact ground truth** (public LithoBench lithography data), then checked on **real SEM defect images** (Carinthia-S).*
+*Engineered against a physics-inspired SEM simulator with **exact nanometre ground truth** on public LithoBench layouts, and put to the test on **4,591 real SEM defect images** (Carinthia-S).*
 
 <br/>
 
@@ -31,7 +31,7 @@
 ## TL;DR
 
 - **What:** a design-based CD-SEM metrology engine. It aligns a low-dose SEM image to its layout, extracts sub-pixel contours, measures **critical dimension (CD)** and **edge placement error (EPE)** on design-defined gauges, flags failed measurements, and runs the per-edge refinement step in a **custom C++/CUDA kernel**.
-- **How we tested it:** **10 experiments in two phases**, scored the way a metrology engineer would (bias, regression slope, precision 3σ, TMU-style uncertainty, dose response, failure rate), not by segmentation IoU.
+- **How it was evaluated:** **10 experiments in two phases**, scored the way a metrology engineer would (bias, regression slope, precision 3σ, TMU-style uncertainty, dose response, failure rate), not by segmentation IoU.
   - **Phase 1, simulated SEM:** an SEM forward model on top of LithoBench lithography data gives **exact edge truth** under exposure-like process changes, local edge changes, roughness and 2–64-frame doses. 436 unseen standard-cell tiles form the test set.
   - **Phase 2, real SEM:** the same network shells segment defects in **4,591 real SEM images** (Carinthia-S).
 - **Key results** (all measured):
@@ -185,7 +185,7 @@ CD gauges at 8 frames inside the exposure range, estimated registration. U-Net a
 | SEM + CAD | 6.27 | 0.948 (0.941–0.954) | 0.848 |
 | SEM only | 6.30 | **0.968** (0.962–0.974) | 0.861 |
 
-CAD did **not** improve accuracy, and the contact-CD regression slope is lower with CAD: the model under-responds to real contact-size changes by about 2%. This is weak evidence (single seed for SEM-only; CI from tile resampling).
+CAD did **not** improve accuracy, and the contact-CD regression slope is lower with CAD: the model under-responds to real contact-size changes by about 2%. Treat this as preliminary evidence (single seed for SEM-only; CI from tile resampling).
 
 ### E7 · Roughness and LCDU
 - **LER** (classical, line/space set, σ = 1 nm): raw 2.98 nm vs true 2.70 nm (3σ) at 2 frames. The **PSD-plateau correction fails** because filtering and blur correlate noise along the edge; a **repeat-noise correction** gives 2.61 nm but is flagged unreliable (SNR 1.9 < 2).
@@ -206,7 +206,7 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 ## 5 · Phase 2: real SEM defects ![r](https://img.shields.io/badge/-REAL%20SEM-6250d6)
 
 ### E9 · Carinthia-S
-**[Carinthia-S](https://zenodo.org/records/16895427)** contains 4,591 real SEM images of defects on unstructured wafers in six classes; class 6 has no visible defect and serves as the nuisance set. It has **no CD/EPE truth**, so it tests the operators on real image statistics through defect segmentation.
+**[Carinthia-S](https://zenodo.org/records/16895427)** contains 4,591 real SEM images of defects on unstructured wafers in six classes; class 6 has no visible defect and serves as the nuisance set. It has **no CD/EPE truth**, which makes it an independent benchmark of the same operators on real SEM image statistics, through defect segmentation.
 
 ![carinthia](results/carinthia/carinthia_grid.png)
 
@@ -236,7 +236,7 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 | **CUDA, texture filtering** | **1.75 ms** | **7.2 ms** |
 
 - **Parity vs float64:** manual sampling max 4.5e-5 px; texture max 0.008 px on SEM data but a **5.4 px outlier** on synthetic data, caused by the hardware's 8-bit filter weights.
-- **When it is not worth it:** for 1e4 points on a 4096 px image, uploading the image makes the GPU **5x slower** than the CPU.
+- **Where the GPU does not pay off:** for 1e4 points on a 4096 px image, uploading the image makes the GPU **5x slower** than the CPU.
 - **Memory locality:** sorting points into 32 px tiles cuts the kernel to 0.68 ms (manual) and 0.29 ms (texture).
 
 ![kernel runtime](results/cuda_kernel/kernel_runtime.png)
@@ -274,6 +274,23 @@ bash run_all.sh           # full pipeline: data download, simulation, baselines,
 | Carinthia-S | [zenodo.org/records/16895427](https://zenodo.org/records/16895427) | `data/carinthia/` | 139 MB |
 | Simulated validation / test sets | generated locally from LithoBench | `results/raw/` | ~7 GB |
 
+### Rerun everything from scratch
+`bash run_all.sh` rebuilds every result in this README from a fresh clone, with nothing to download by hand:
+
+| Step | What happens automatically |
+|---|---|
+| Environment | creates `.venv/` and installs the pinned packages from `requirements.txt` (PyTorch CUDA 12.8 wheels included) |
+| Datasets | downloads LithoBench (Google Drive, via `gdown`) and Carinthia-S (Zenodo, via `curl`) into `data/`, then extracts them |
+| Simulated data | renders the cached validation/test SEM sets and the training crop bank locally from LithoBench |
+| Models | **no pretrained weights needed:** every U-Net/DCN model (metrology and Carinthia-S) is trained from scratch through the GPU job queue |
+| Evaluation | validation and frozen test evaluations, classical baseline, registration analysis, trust analysis, real-SEM metrics |
+| Kernel | builds the C++/CUDA extension, runs its tests and the parity check (skipped with a message if `nvcc` ≥ 12.8 is not found) |
+| Reports | regenerates every table and figure in `results/` and `docs/RESULTS.md` |
+
+Every step skips outputs that already exist, so an interrupted run resumes where it stopped. A full run takes roughly
+12 hours on one GPU (training ≈ 7 GPU-hours, evaluation ≈ 4 hours). If the Google Drive download hits its quota, download
+`lithodata.tar.gz` from the [LithoBench README](https://github.com/shelljane/lithobench) link into `data/lithobench/` and rerun.
+
 <details><summary><b>Run individual pieces</b></summary>
 
 ```bash
@@ -289,6 +306,7 @@ python src/confidence.py --runs <run_s1> <run_s2> <run_s3> --tag dcnv3   # E8
 python src/carinthia.py split | train --run <yaml> | aggregate | noise  # E9
 cuda\build.bat                                      # build the C++/CUDA extension (Windows: CMake + nvcc 12.8 + MSVC)
 python benchmarks/bench_kernel.py parity            # E10 parity
+python tools/reproduce_results.py                   # all evaluations, tables and figures after training
 python tools/make_dashboard.py                      # results/figures/hero.png
 ```
 </details>

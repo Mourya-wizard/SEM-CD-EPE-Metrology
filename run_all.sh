@@ -2,8 +2,10 @@
 # Reproduce the project from a clean clone.  Usage:  bash run_all.sh [--smoke]
 #   --smoke : environment + tests + a few-minute end-to-end pass on 2+2 validation tiles (needs data/ present
 #             or PROJECT_DATA_ROOT pointing at an existing data/ folder; downloads nothing large).
-#   (full)  : downloads data (~15 GB), runs M1..M6 + M8 benchmark prerequisites. Training runs through the GPU
-#             queue and takes several GPU-hours. Steps are resumable (cached files are skipped).
+#   (full)  : downloads both datasets (~15 GB), then runs everything end to end: data audit, simulator checks,
+#             cached validation/test sets, registration, classical baseline, GPU pilot, training of every model
+#             through the GPU queue, evaluations, real-SEM pipeline, trust analysis, C++/CUDA kernel, figures.
+#             No pretrained weights are needed. Takes roughly 12 hours on one GPU; every step is resumable.
 # Works under Git Bash on Windows (.venv/Scripts) and on Linux (.venv/bin). Never installs outside .venv.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -78,5 +80,20 @@ for split in val test; do "$PY" src/evaluate.py cache --split $split; "$PY" src/
 # Training + evaluation through the GPU queue (resumable; run matrix in configs/runs/).
 RUNS=$(ls configs/runs/screen_*.yaml configs/runs/confirm_*.yaml configs/runs/cadtest_*.yaml)
 "$PY" tools/run_queue.py start --runs $RUNS
-echo "[run_all] training done. Evaluations: drop eval yamls into configs/queue/ (see docs/ARCHITECTURE.md), then"
-echo "          src/evaluate.py / src/confidence.py / src/plots.py as listed in README.md 'Exact commands'."
+# Evaluations (validation + frozen test), classical test, trust analysis, real-SEM pipeline, tables and figures.
+"$PY" tools/reproduce_results.py
+# C++/CUDA kernel: needs nvcc >= 12.8 and a C++ compiler (MSVC on Windows); skipped otherwise.
+if command -v nvcc >/dev/null 2>&1 || [[ -n "${CUDA_HOME:-}" || -d .cache/cuda/v12.8 ]]; then
+  if [[ "${OS:-}" == "Windows_NT" ]]; then
+    cmd //c "cuda\\build.bat"
+  else
+    BIN="$(dirname "$PY")"
+    "$BIN/cmake" -S cuda -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM="$BIN/ninja" \
+      -DPython_EXECUTABLE="$PY" -Dpybind11_DIR="$("$PY" -m pybind11 --cmakedir)" && "$BIN/cmake" --build build -j 4
+  fi
+  "$PY" -m pytest -q tests/test_kernel.py
+  "$PY" benchmarks/bench_kernel.py parity
+else
+  echo "[run_all] nvcc not found: skipping the C++/CUDA kernel (install CUDA >= 12.8 or set CUDA_HOME)"
+fi
+echo "[run_all] FULL RUN DONE: results/ and docs/RESULTS.md regenerated"

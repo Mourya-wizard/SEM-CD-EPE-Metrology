@@ -30,3 +30,4 @@ configs/runs/smoke/
 results/queue*
 results/raw/
 results/gds/
+configs/queue_all/
