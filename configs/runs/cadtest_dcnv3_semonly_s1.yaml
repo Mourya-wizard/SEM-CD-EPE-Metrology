@@ -1,0 +1,4 @@
+name: cadtest_dcnv3_semonly_s1
+op: dcnv3
+cad: false
+seed: 1

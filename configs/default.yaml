@@ -1,0 +1,149 @@
+# All project parameters. No magic numbers elsewhere.
+paths:
+  data_root: data                 # overridden by env PROJECT_DATA_ROOT (absolute)
+  lithobench: data/lithobench
+  carinthia: data/carinthia/data
+  results: results
+
+lithobench:
+  # Verified in the data audit: litho/*.png = aerial * 255 (uint8, linear),
+  # printed = aerial > 0.225 (>= 99.956% pixel agreement), bright = printed feature, 1 nm / px.
+  aerial_threshold: 0.225
+  pixel_size_nm: 1.0
+  tile_px: 2048
+  active_lo_px: 384               # central active region [384, 1664) for Via/Std sets
+  active_hi_px: 1664
+  crop_px: 512
+  train_sets: [MetalSet, ViaSet]
+  test_sets: [StdMetal, StdContactTest]
+  tuning_sets: [StdContact]       # documented 163-tile tuning split; use only if density matching is needed
+  val_fraction: 0.05              # fraction of train-set tiles held out for validation, by tile
+  split_seed: 20261104
+
+carinthia:
+  csv: carinthia-s.csv
+  no_defect_label: 6              # verified: "no visible defects" (SEM misalignment captures)
+  right_border_px: 3              # black border on right side of images
+  mask_threshold: 127
+
+sim:
+  # Truth field F = aerial_hybrid - t_eff (+ local bumps + roughness). Truth contour = zero level set of the
+  # bilinear interpolant of F on the 1 nm design grid. SEM pixel = 1 nm (design px).
+  resist_band: [3, 252]            # resist uint8 levels where logit(resist)/50 + 0.225 is blended in
+  resist_ramp: 7                   # levels over which the blend weight ramps 0 -> 1
+  resist_steepness: 50.0           # LithoBench PrintSteepness
+  field_smooth_px: 1.0             # Gaussian sigma applied to the hybrid aerial (removes 8-bit steps)
+  margin_px: 32                    # design-crop margin around the SEM field of view for distortion
+  sd_eps: 0.0001                   # d = F / sqrt(|grad F|^2 + eps^2). Must be << edge gradient (~0.002-0.006 /px); 0.002 under-scaled d by ~0.84 (M2 bug)
+  sd_clip_px: 8.0
+  edge_softness_px: 0.5            # material transition sigmoid(d / s); beam blur is applied separately
+  electrons_per_frame: 3.0         # mean detected electrons per pixel per frame per unit yield
+  detector_sigma: 0.01             # Gaussian detector noise (yield units) after frame averaging
+  frames: [2, 4, 8, 16, 32, 64]
+  reference_frames: 64
+  threshold_nominal: 0.225
+  threshold_train: [0.205, 0.245]  # exposure-like sweep, training / inside range (calibrated in M2)
+  threshold_outer: [0.190, 0.260]  # held-out outer values for extrapolation tests: [0.190,0.205) U (0.245,0.260]
+  bumps_per_crop: [0, 4]           # local programmed edge changes (inclusive range)
+  bump_shift_nm: [-4.0, 4.0]       # peak edge displacement, + = outward (feature grows)
+  bump_radius_px: [8.0, 20.0]
+  train:                           # randomized ranges (uniform) used for training data
+    level_out: [0.15, 0.35]        # substrate emission yield
+    contrast: [0.05, 0.25]         # feature level - substrate level
+    bloom_amp: [0.30, 0.60]
+    bloom_width_px: [1.5, 3.0]
+    bloom_offset_px: [-1.5, 1.5]   # + = peak inside the feature (along inward normal)
+    blur_px: [1.0, 2.5]            # beam Gaussian sigma
+    rough_sigma_nm: [0.5, 2.0]
+    rough_corr_nm: [5.0, 20.0]
+    scale: [-0.003, 0.003]         # affine diagonal deviation
+    rot_rad: [-0.003, 0.003]
+    shear: [-0.002, 0.002]
+    shift_px: [-6.0, 6.0]          # stage offset
+  stress_contrast: [0.01, 0.04]    # outside train contrast range (never used for tuning)
+  stress_blur_px: [2.8, 4.0]       # outside train blur range (never used for tuning)
+
+registration:
+  feature: intensity               # intensity (matched CAD render) | edge (gradient magnitude)
+  tmpl_contrast: 0.15              # nominal SEM model used to render the matched CAD template
+  tmpl_bloom_amp: 0.45
+  tmpl_bloom_width_px: 2.0
+  coarse_sigma_px: 3.0             # edge-map smoothing for FFT translation search over [-M, M]
+  fine_sigma_px: 2.0               # edge-map smoothing for affine NCC refinement
+  ncc_border_px: 16
+  corner_weight_px: 15.0           # template weight ramps 0->1 over this distance from design corners/line ends (0 = off)
+  refine: none                     # none | translation | affine. Chosen on val (M3): affine/translation refinement did not beat coarse-only
+  affine_prior: 0.003              # prior std of affine deviation terms (matches sim training range)
+  affine_prior_weight: 0.001       # weight of that prior relative to -NCC
+  lbfgs_iters: 40
+  d_scale: 0.001                   # affine-deviation parameter scale (theta units = 1e-3)
+
+gauges:
+  corner_excl_px: 10               # CD/1D-EPE probes must be >= this far from design corners / jogs
+  epe_stride_px: 4                 # EPE probe spacing along the design boundary
+  cd_stride_px: 8                  # CD gauge spacing along a straight segment
+  cd_max_px: 200                   # ignore "CD" pairs wider than this (large pads)
+  contact_rays: 32
+  contact_max_radius_px: 80
+  probe_half_window_px: 16         # truth/measurement search window along the normal (+- px)
+  border_px: 52                    # probes must be >= this far from the design-crop border (margin 32 + window 16 + 4)
+
+classical:                         # defaults; per-dose sigma/frac tuned on validation in M3 -> results/classical_baseline/classical_tuning.json
+  sigma: 1.5                       # Gaussian pre-filter (px)
+  frac: 0.5                        # threshold on the outer slope of the bloom peak: base + frac*(peak-base)
+  search_px: 16                    # stage-1 peak search +- px around the design edge
+  prom_radius_px: 6
+  min_prom: 0.08                   # minimum peak prominence (yield units)
+  step: 0.05
+  w_in: 4.0                        # refinement window: w_in inward, w_out outward of the start position
+  w_out: 8.0
+  tune_sigma: [0.75, 1.5, 2.5, 3.5]
+  tune_frac: [0.3, 0.5, 0.7, 0.9]
+
+eval:
+  thresholds_inside: [0.205, 0.215, 0.225, 0.235, 0.245]
+  thresholds_outside: [0.190, 0.200, 0.250, 0.260]
+  val_tiles_per_set: 60            # cached validation subset (first N val IDs per train set)
+  precision_tiles_per_set: 30      # tiles per set that get 20 noise reps on the nominal condition
+  precision_reps: 20
+  fail_abs_nm: 10.0                # failure = invalid measurement or |error| > this
+  noise_threads: 4                 # threads for deterministic CPU noise generation inside GPU eval jobs
+  max_cpu_workers: 15             # user cap (2026-11-04): at most 15 CPU processes, 1 thread each
+  selection_dose: 8                # frozen model-selection metric: mean val TMU-style CD at 8 frames
+
+roughness:                         # small documented line/space set for LER/LWR (PSD) analysis
+  pitch_px: 64
+  amp: 0.1                         # aerial cosine amplitude (edge gradient ~ amp*2*pi/pitch = 0.0098 /px)
+  phase_px: 0.0
+  rough_sigma_nm: [1.0, 2.0]
+  rough_corr_nm: 10.0
+  reps: 5
+  hf_frac: 0.25                    # top fraction of the frequency band used as the noise-floor plateau
+  snr_min: 2.0                     # flag correction unreliable below this
+
+model:
+  width: {conv: 32, dcnv2: 32, dcnv3: 36, dcnv4: 36}   # param matching (M4): 5.60M / 5.85M / 5.56M / 5.55M (all within 10% of conv)
+  tsdf_trunc_px: 8.0               # TSDF target = clip(signed distance px / trunc, -1, 1), + inside
+
+train:
+  bank_per_set: 3000               # precomputed training crops per train set (data/bank, ~14 GB, git-ignored)
+  bank_seed: 4242
+  batch: 12
+  iters: 6000                      # ~30 min dcnv3 / ~17 min conv at N=1 (pilot throughput)
+  lr: 0.001
+  weight_decay: 0.0001
+  warmup: 300
+  grad_clip: 1.0
+  edge_weight: 4.0                 # L1 weight 1 + edge_weight inside the TSDF truncation band
+  log_every: 25
+  val_every: 1000
+  val_tiles_per_set: 20            # cached val tiles per set used for checkpoint selection (frozen metric)
+
+queue:
+  concurrency: 1                   # M4 pilot (results/gpu_pilot.csv): N=1->2 aggregate +(-2%) dcnv3, +9.3% conv (<10%) -> N=1
+  mem_fraction: 0.40               # per-run cap: dcnv3 peak 17.3 GB * 1.5 / 77 GB = 0.34 -> 0.40
+
+refine:                            # learned + 1D SEM profile refinement (frozen, NOT tuned): classical per-dose
+  w_in: 3.0                        # sigma/frac/edge_offset from results/classical_baseline/classical_tuning.json; window around the
+  w_out: 6.0                       # learned edge: peak searched within w_in (inward and outward), crossing up to w_out
+  peak_inset_px: 0.0

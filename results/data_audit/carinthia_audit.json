@@ -1,0 +1,83 @@
+{
+ "total": 4591,
+ "classes": [
+  {
+   "label": 1,
+   "n_images": 55,
+   "empty_masks": 0,
+   "nonbinary_masks": 44,
+   "fg_frac_mean": 0.11089946338383838,
+   "shapes": [
+    [
+     480,
+     480
+    ]
+   ]
+  },
+  {
+   "label": 2,
+   "n_images": 8,
+   "empty_masks": 0,
+   "nonbinary_masks": 8,
+   "fg_frac_mean": 0.018841145833333336,
+   "shapes": [
+    [
+     480,
+     480
+    ]
+   ]
+  },
+  {
+   "label": 3,
+   "n_images": 4008,
+   "empty_masks": 0,
+   "nonbinary_masks": 317,
+   "fg_frac_mean": 0.019669469654441118,
+   "shapes": [
+    [
+     480,
+     480
+    ]
+   ]
+  },
+  {
+   "label": 4,
+   "n_images": 289,
+   "empty_masks": 0,
+   "nonbinary_masks": 26,
+   "fg_frac_mean": 0.11464576424932718,
+   "shapes": [
+    [
+     480,
+     480
+    ]
+   ]
+  },
+  {
+   "label": 5,
+   "n_images": 4,
+   "empty_masks": 0,
+   "nonbinary_masks": 0,
+   "fg_frac_mean": 0.032583550347222226,
+   "shapes": [
+    [
+     480,
+     480
+    ]
+   ]
+  },
+  {
+   "label": 6,
+   "n_images": 227,
+   "empty_masks": 226,
+   "nonbinary_masks": 0,
+   "fg_frac_mean": 9.560083210964267e-07,
+   "shapes": [
+    [
+     480,
+     480
+    ]
+   ]
+  }
+ ]
+}

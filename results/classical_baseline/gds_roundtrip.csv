@@ -1,0 +1,4 @@
+file,roundtrip_ok,max_vertex_diff_nm,n_vertices,n_truth_contours,n_measured_contacts
+ViaSet_aes_via1__0_1015.gds,True,0.0004991572357671004,716,3,2
+MetalSet_cell1000.gds,True,0.0004988535864391963,2885,3,0
+MetalSet_cell10007.gds,True,0.0004994487320386654,1010,1,0

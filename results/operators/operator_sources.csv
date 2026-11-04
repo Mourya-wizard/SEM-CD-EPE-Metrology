@@ -1,0 +1,5 @@
+op,source,params,train_img_per_s_N1,train_peak_alloc_gb,infer_ms_bs1,infer_ms_bs8
+conv,torch.nn.Conv2d 3x3,5602017,76.08,9.77,4.76,29.08
+dcnv2,torchvision.ops.DeformConv2d (official torchvision op),5850984,51.93,10.03,6.31,39.14
+dcnv3,"OpenGVLab/InternImage DCNv3_pytorch, official PyTorch fallback, vendored @31c962d (MIT)",5563621,38.28,17.28,11.88,67.84
+dcnv4,PyTorch REIMPLEMENTATION of OpenGVLab/DCNv4 module semantics (NOT official; official op @4b848f7 failed to build: torch header C2872 under nvcc+MSVC),5552981,38.92,16.02,11.42,66.11

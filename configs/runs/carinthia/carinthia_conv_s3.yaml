@@ -1,0 +1,3 @@
+name: carinthia_conv_s3
+op: conv
+seed: 3

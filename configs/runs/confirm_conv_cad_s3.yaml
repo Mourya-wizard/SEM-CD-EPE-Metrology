@@ -1,0 +1,4 @@
+name: confirm_conv_cad_s3
+op: conv
+cad: true
+seed: 3

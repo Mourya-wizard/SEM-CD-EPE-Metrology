@@ -1,0 +1,152 @@
+{
+ "classical": {
+  "2": {
+   "n_contacts": 83,
+   "truth_lcdu_3s": 7.85538629313542,
+   "raw_lcdu_3s": 10.327867328701755,
+   "noise_3s": 1.402209341892052,
+   "corrected_lcdu_3s": 10.232235949232983,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "4": {
+   "n_contacts": 85,
+   "truth_lcdu_3s": 8.278327261010377,
+   "raw_lcdu_3s": 11.230532014088112,
+   "noise_3s": 0.6368960707017481,
+   "corrected_lcdu_3s": 11.212457924763093,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "8": {
+   "n_contacts": 85,
+   "truth_lcdu_3s": 8.278327261010377,
+   "raw_lcdu_3s": 11.36564515651943,
+   "noise_3s": 0.44828812980824073,
+   "corrected_lcdu_3s": 11.3568009393749,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "16": {
+   "n_contacts": 85,
+   "truth_lcdu_3s": 8.278327261010377,
+   "raw_lcdu_3s": 11.002429217089423,
+   "noise_3s": 0.4998354883307175,
+   "corrected_lcdu_3s": 10.991069700519063,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "32": {
+   "n_contacts": 85,
+   "truth_lcdu_3s": 8.278327261010377,
+   "raw_lcdu_3s": 11.106971190934768,
+   "noise_3s": 0.2851357109694287,
+   "corrected_lcdu_3s": 11.103310617225155,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "64": {
+   "n_contacts": 85,
+   "truth_lcdu_3s": 8.278327261010377,
+   "raw_lcdu_3s": 11.12634873518995,
+   "noise_3s": 0.2287923622723803,
+   "corrected_lcdu_3s": 11.123996144912528,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  }
+ },
+ "U-Net s1": {
+  "2": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.384018115449571,
+   "noise_3s": 0.8842625482459942,
+   "corrected_lcdu_3s": 10.346299433505411,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "4": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.326077903289669,
+   "noise_3s": 0.6008185703705452,
+   "corrected_lcdu_3s": 10.308583894517472,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "8": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.370950575018076,
+   "noise_3s": 0.4606885561063443,
+   "corrected_lcdu_3s": 10.360713386815622,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "16": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.210120240642084,
+   "noise_3s": 0.3243802139656993,
+   "corrected_lcdu_3s": 10.204966085448628,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "32": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.233454632324952,
+   "noise_3s": 0.24692907084533672,
+   "corrected_lcdu_3s": 10.230475049860807,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "64": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.119127901971591,
+   "noise_3s": 0.19031203009754105,
+   "corrected_lcdu_3s": 10.117338129550683,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  }
+ },
+ "DCNv3 s1": {
+  "2": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.092364803728756,
+   "noise_3s": 0.8657588273445749,
+   "corrected_lcdu_3s": 10.055162305225009,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "4": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.073391676665858,
+   "noise_3s": 0.5994545025202518,
+   "corrected_lcdu_3s": 10.0555394768719,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "8": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.16273502767822,
+   "noise_3s": 0.46269362518981927,
+   "corrected_lcdu_3s": 10.152196700813404,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "16": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.072001455414464,
+   "noise_3s": 0.31783180169764336,
+   "corrected_lcdu_3s": 10.066985460588523,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "32": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.08930951874019,
+   "noise_3s": 0.23516685412029206,
+   "corrected_lcdu_3s": 10.08656845094825,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  },
+  "64": {
+   "n_contacts": 86,
+   "truth_lcdu_3s": 8.328279690070552,
+   "raw_lcdu_3s": 10.07946158129182,
+   "noise_3s": 0.1741240887055389,
+   "corrected_lcdu_3s": 10.077957460243134,
+   "note": "contacts grouped by design CD (1 nm bins); nominal condition; per-dose split in lcdu_by_dose"
+  }
+ }
+}

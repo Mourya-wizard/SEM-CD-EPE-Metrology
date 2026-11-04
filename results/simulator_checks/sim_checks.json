@@ -1,0 +1,160 @@
+{
+ "tiles": {
+  "MetalSet": [
+   "cell1000",
+   "cell10007",
+   "cell10021",
+   "cell1003",
+   "cell10042",
+   "cell10045"
+  ],
+  "ViaSet": [
+   "aes_via1__0_1015",
+   "aes_via1__0_1055",
+   "aes_via1__0_1075",
+   "aes_via1__0_108",
+   "aes_via1__0_1081",
+   "aes_via1__0_1098"
+  ]
+ },
+ "recovery_peak_pure_bloom": {
+  "mode": "peak",
+  "overrides": {
+   "contrast": 0.0
+  },
+  "n_points": 4564,
+  "median_err_px": 0.005168411694048025,
+  "median_abs_err_px": 0.01822156812715614,
+  "p95_abs_err_px": 0.058317745908890356,
+  "expected_bias_px": 0.0
+ },
+ "recovery_level_no_bloom": {
+  "mode": "level",
+  "overrides": {
+   "bloom_amp": 0.0
+  },
+  "n_points": 4558,
+  "median_err_px": -0.012040949306890286,
+  "median_abs_err_px": 0.01663014292833581,
+  "p95_abs_err_px": 0.04203564973951657,
+  "expected_bias_px": 0.0
+ },
+ "bloom_offset_+1.0_pure_bloom": {
+  "mode": "peak",
+  "overrides": {
+   "contrast": 0.0,
+   "bloom_offset_px": 1.0
+  },
+  "n_points": 4564,
+  "median_err_px": -1.016467203734716,
+  "median_abs_err_px": 1.016467203734716,
+  "p95_abs_err_px": 1.2941021143940314,
+  "expected_bias_px": -1.0
+ },
+ "bloom_offset_-1.0_pure_bloom": {
+  "mode": "peak",
+  "overrides": {
+   "contrast": 0.0,
+   "bloom_offset_px": -1.0
+  },
+  "n_points": 4564,
+  "median_err_px": 1.038437793832746,
+  "median_abs_err_px": 1.038437793832746,
+  "p95_abs_err_px": 1.2979814015092592,
+  "expected_bias_px": 1.0
+ },
+ "peak_with_contrast_offset_0": {
+  "mode": "peak",
+  "overrides": {},
+  "n_points": 4564,
+  "median_err_px": -0.5957330368043747,
+  "median_abs_err_px": 0.5957330368043747,
+  "p95_abs_err_px": 0.748358978287816,
+  "expected_bias_px": null
+ },
+ "peak_with_contrast_offset_+1.0": {
+  "mode": "peak",
+  "overrides": {
+   "bloom_offset_px": 1.0
+  },
+  "n_points": 4564,
+  "median_err_px": -1.453655496574104,
+  "median_abs_err_px": 1.453655496574104,
+  "p95_abs_err_px": 1.8674916339391423,
+  "expected_bias_px": null
+ },
+ "exposure_sweep_metal": {
+  "0.190": {
+   "n": 1540,
+   "median_edge_shift_px": 10.326926812685391,
+   "cd_change_2x_median_nm": 20.653853625370783,
+   "iqr_edge_shift_px": 3.77211403239731,
+   "p5": 8.046129601528103,
+   "p95": 16.683547407187238
+  },
+  "0.200": {
+   "n": 1723,
+   "median_edge_shift_px": 7.64839346505413,
+   "cd_change_2x_median_nm": 15.29678693010826,
+   "iqr_edge_shift_px": 2.9148524342771776,
+   "p5": 5.782786080675958,
+   "p95": 13.29797243110197
+  },
+  "0.205": {
+   "n": 1748,
+   "median_edge_shift_px": 6.18583212188195,
+   "cd_change_2x_median_nm": 12.3716642437639,
+   "iqr_edge_shift_px": 2.369092366663068,
+   "p5": 4.63336635580539,
+   "p95": 10.739991463355771
+  },
+  "0.215": {
+   "n": 1777,
+   "median_edge_shift_px": 3.1485929469318954,
+   "cd_change_2x_median_nm": 6.297185893863791,
+   "iqr_edge_shift_px": 1.197610312649457,
+   "p5": 2.324495472306086,
+   "p95": 5.410976579014301
+  },
+  "0.225": {
+   "n": 1794,
+   "median_edge_shift_px": 0.0,
+   "cd_change_2x_median_nm": 0.0,
+   "iqr_edge_shift_px": 0.0,
+   "p5": 0.0,
+   "p95": 0.0
+  },
+  "0.235": {
+   "n": 1706,
+   "median_edge_shift_px": -3.252600554184692,
+   "cd_change_2x_median_nm": -6.505201108369384,
+   "iqr_edge_shift_px": 1.110026195184127,
+   "p5": -5.492138953964041,
+   "p95": -2.3459469203811367
+  },
+  "0.245": {
+   "n": 1555,
+   "median_edge_shift_px": -6.4531612807018615,
+   "cd_change_2x_median_nm": -12.906322561403723,
+   "iqr_edge_shift_px": 2.004045196483207,
+   "p5": -9.773151003670664,
+   "p95": -4.7193987135594755
+  },
+  "0.250": {
+   "n": 1405,
+   "median_edge_shift_px": -7.909226446603305,
+   "cd_change_2x_median_nm": -15.81845289320661,
+   "iqr_edge_shift_px": 2.3056962161241525,
+   "p5": -11.127908257608881,
+   "p95": -5.917813787973972
+  },
+  "0.260": {
+   "n": 1098,
+   "median_edge_shift_px": -10.683322640772449,
+   "cd_change_2x_median_nm": -21.366645281544898,
+   "iqr_edge_shift_px": 3.390204132856949,
+   "p5": -14.664033317653184,
+   "p95": -8.175744261553366
+  }
+ }
+}

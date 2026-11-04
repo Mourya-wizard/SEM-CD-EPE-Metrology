@@ -1,0 +1,4 @@
+name: confirm_dcnv3_cad_s3
+op: dcnv3
+cad: true
+seed: 3

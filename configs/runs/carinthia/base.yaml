@@ -1,0 +1,12 @@
+# Shared by ALL Carinthia-S runs (only op and seed differ per run yaml). SEM input only, full 480x480 images.
+train:
+  iters: 3000
+  batch: 8
+  lr: 0.001
+  weight_decay: 0.0001
+  warmup: 150
+  grad_clip: 1.0
+  dice_weight: 1.0       # loss = BCE + dice_weight * soft Dice (both on the valid region only)
+  log_every: 100
+  val_every: 500         # selection metric: mean val Dice on defect images (classes 1-5)
+seg_threshold: 0.5       # foreground iff predicted probability > 0.5

@@ -1,0 +1,81 @@
+{
+ "sets": {
+  "MetalSet": {
+   "files": {
+    "target": 16472,
+    "litho": 16423,
+    "printed": 16422,
+    "resist": 16422
+   },
+   "usable_tiles": 16422,
+   "thr_agreement_min": 0.9997096061706543,
+   "thr_agreement_mean": 0.9998880177736282,
+   "printed_fg_mean": 0.023715391755104065
+  },
+  "ViaSet": {
+   "files": {
+    "target": 116414,
+    "litho": 116405,
+    "printed": 116405,
+    "resist": 116405
+   },
+   "usable_tiles": 116395,
+   "thr_agreement_min": 0.999943733215332,
+   "thr_agreement_mean": 0.9999667108058929,
+   "printed_fg_mean": 0.002788349986076355
+  },
+  "StdMetal": {
+   "files": {
+    "target": 271,
+    "litho": 271,
+    "printed": 271,
+    "resist": 271
+   },
+   "usable_tiles": 271,
+   "thr_agreement_min": 0.9995722770690918,
+   "thr_agreement_mean": 0.9998685866594315,
+   "printed_fg_mean": 0.032777562737464905
+  },
+  "StdContact": {
+   "files": {
+    "target": 163,
+    "litho": 163,
+    "printed": 163,
+    "resist": 163
+   },
+   "usable_tiles": 163,
+   "thr_agreement_min": 0.9997363090515137,
+   "thr_agreement_mean": 0.9998216331005096,
+   "printed_fg_mean": 0.010805696249008179
+  },
+  "StdContactTest": {
+   "files": {
+    "target": 165,
+    "litho": 165,
+    "printed": 165,
+    "resist": 165
+   },
+   "usable_tiles": 165,
+   "thr_agreement_min": 0.9997496604919434,
+   "thr_agreement_mean": 0.9998092651367188,
+   "printed_fg_mean": 0.011193931102752686
+  }
+ },
+ "split_sizes": {
+  "train": {
+   "MetalSet": 15603,
+   "ViaSet": 110796
+  },
+  "val": {
+   "MetalSet": 819,
+   "ViaSet": 5599
+  },
+  "test": {
+   "StdMetal": 271,
+   "StdContactTest": 165
+  },
+  "tuning": {
+   "StdContact": 163
+  }
+ }
+}
