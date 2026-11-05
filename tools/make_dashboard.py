@@ -38,7 +38,10 @@ def pick(s, kind, dose, col):
 
 SEEDS = {"U-Net": ["screen_conv_cad_s1__learned", "confirm_conv_cad_s2__learned", "confirm_conv_cad_s3__learned"],
          "DCNv3": ["screen_dcnv3_cad_s1__learned", "confirm_dcnv3_cad_s2__learned", "confirm_dcnv3_cad_s3__learned"]}
-SINGLE = {"DCNv2": "screen_dcnv2_cad_s1__learned", "DCNv4": "screen_dcnv4_cad_s1__learned", "SEM only": "cadtest_dcnv3_semonly_s1__learned"}
+MULTI = {"DCNv2": ["screen_dcnv2_cad_s1__learned"],
+         "DCNv4": ["screen_dcnv4_cad_s1__learned", "confirm_dcnv4_cad_s2__learned", "confirm_dcnv4_cad_s3__learned"],
+         "SEM only": ["cadtest_dcnv3_semonly_s1__learned", "cadtest_dcnv3_semonly_s2__learned", "cadtest_dcnv3_semonly_s3__learned"]}
+MULTI = {k: [n for n in v if os.path.exists(os.path.join(EVAL, f"test_summary_{n}.csv"))] for k, v in MULTI.items()}
 
 fig, ax = plt.subplots(1, 4, figsize=(19, 4.3))
 # (a) precision vs dose
@@ -58,8 +61,9 @@ labs, vals, lo, hi, cols = ["classical"], [pick(cl, "cd", 8, "inside_tmu3s")], [
 for lab, names in SEEDS.items():
     v = [pick(summ(n), "cd", 8, "inside_tmu3s") for n in names]
     labs.append(f"{lab}\n3 seeds"); vals.append(np.mean(v)); lo.append(np.mean(v) - min(v)); hi.append(max(v) - np.mean(v)); cols.append(C[lab])
-for lab, n in SINGLE.items():
-    labs.append(f"{lab}\n1 seed"); vals.append(pick(summ(n), "cd", 8, "inside_tmu3s")); lo.append(0); hi.append(0); cols.append(C[lab])
+for lab, names in MULTI.items():
+    v = [pick(summ(n), "cd", 8, "inside_tmu3s") for n in names]
+    labs.append(f"{lab}\n{len(v)} seed{'s' if len(v) > 1 else ''}"); vals.append(np.mean(v)); lo.append(np.mean(v) - min(v)); hi.append(max(v) - np.mean(v)); cols.append(C[lab])
 ax[1].bar(range(len(vals)), vals, yerr=[lo, hi], color=cols, capsize=3)
 for i, v in enumerate(vals):
     ax[1].text(i, v + 0.05, f"{v:.2f}", ha="center", fontsize=8)

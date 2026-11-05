@@ -39,7 +39,7 @@
   - 🎯 CD TMU-style **6.29 nm vs 6.73 nm** and failure rate **4.2% vs 6.8%** against a validation-tuned, offset-calibrated classical edge tracer.
   - 🧭 **Registration, not the edge model, limits EPE:** EPE TMU-style **8.2 nm → 2.7 nm** with ideal registration.
   - ⚡ The CUDA texture kernel refines **1M edge points in 1.75 ms** on a 4096 px image, **62x** faster than 48 CPU threads (**11x** including transfer).
-- **Notable findings:** deformable convolutions (DCNv2/v3/v4) showed **no measurable gain** on simulated metrology (U-Net and DCNv3 overlap across 3 seeds), whereas on **real SEM defects** DCNv3 outperformed U-Net on every seed (Dice 0.956 vs 0.951). CAD input did not improve accuracy and **slightly reduced sensitivity** to real contact-size changes.
+- **Notable findings:** deformable convolutions (DCNv2/v3/v4) showed **no measurable gain** on simulated metrology (U-Net and DCNv3 overlap across 3 seeds), whereas on **real SEM defects** DCNv3 outperformed U-Net on every seed (Dice 0.956 vs 0.951). CAD input did not improve accuracy and **consistently reduced sensitivity** to real contact-size changes across seeds.
 
 <div align="center">
 
@@ -155,7 +155,7 @@ Selection metric fixed before training: mean validation TMU-style (CD + contacts
 > **DCNv3 was selected on validation** and the choice was frozen before any test evaluation. Adding a classical 1D profile refinement after the learned contour made every model worse (+0.52 … +0.55 nm), so it is reported but not used.
 
 ### E5 · Test-set metrology
-CD gauges at 8 frames inside the exposure range, estimated registration. U-Net and DCNv3: mean (range) over 3 seeds; other rows are single-seed.
+CD gauges at 8 frames inside the exposure range, estimated registration. Mean (range) over the seeds listed; DCNv2 is single-seed.
 
 | Method | Seeds | Slope | TMU-style 3σ (nm) | Precision 3σ @ 2 / 64 fr (nm) | Failure | Frames to match baseline @ 64 |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
@@ -163,7 +163,7 @@ CD gauges at 8 frames inside the exposure range, estimated registration. U-Net a
 | U-Net | 3 | 0.993 | 6.30 (6.28–6.32) | 2.31 / 0.47 | 4.2% | 16–17 |
 | **DCNv3** | 3 | 0.993 | **6.29** (6.27–6.31) | **2.24 / 0.45** | **4.2%** | **14–17** |
 | DCNv2 | 1 | 0.994 | 6.30 | 2.29 / 0.45 | 4.3% | 16 |
-| DCNv4 | 1 | 0.994 | 6.29 | 2.28 / 0.44 | 4.4% | 15 |
+| DCNv4 | 2 | 0.994 | 6.28 (6.27–6.29) | 2.27 / 0.44 | 4.2% | 15 |
 
 ![CD measured vs true](results/figures/test_cd_meas_vs_true_dcnv3_s1.png)
 
@@ -180,12 +180,12 @@ CD gauges at 8 frames inside the exposure range, estimated registration. U-Net a
 > **Registration is the dominant EPE error.** With ideal registration DCNv3 cuts EPE TMU-style from 8.25 to 2.66 nm. At outer exposure values the printed pattern departs from the design, the CAD-template registration mis-locks, and CD failure rates rise to ~46–48% for **every** method.
 
 ### E6 · CAD vs SEM-only
-| DCNv3 (seed 1) | CD TMU-style (nm) | Contact-CD slope (95% CI) | EPE slope |
-|---|:--:|:--:|:--:|
-| SEM + CAD | 6.27 | 0.948 (0.941–0.954) | 0.848 |
-| SEM only | 6.30 | **0.968** (0.962–0.974) | 0.861 |
+| DCNv3 | Seeds | CD TMU-style (nm) | Contact-CD slope (per seed) | EPE slope (per seed) |
+|---|:--:|:--:|:--:|:--:|
+| SEM + CAD | 3 | 6.27–6.31 | 0.948 / 0.955 / 0.953 | 0.848 / 0.854 / 0.851 |
+| SEM only | 2 | 6.30 / 6.30 | **0.968 / 0.969** | **0.861 / 0.863** |
 
-CAD did **not** improve accuracy, and the contact-CD regression slope is lower with CAD: the model under-responds to real contact-size changes by about 2%. This result is preliminary (single seed for the SEM-only model; CI from tile resampling).
+CAD did **not** improve accuracy, and every SEM-only seed has a higher regression slope than every CAD seed: with CAD input the model under-responds to real contact-size changes by about 1.5–2% and to EPE changes by about 1%. The effect is consistent across seeds (3 with CAD, 2 without; seed 3 of the SEM-only model was not trained).
 
 ### E7 · Roughness and LCDU
 - **LER** (classical, line/space set, σ = 1 nm): raw 2.98 nm vs true 2.70 nm (3σ) at 2 frames. The **PSD-plateau correction fails** because filtering and blur correlate noise along the edge; a **repeat-noise correction** gives 2.61 nm but is flagged unreliable (SNR 1.9 < 2).
@@ -260,7 +260,7 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 | ✅ | **Learned contour models give about 4x dose reduction at equal CD precision,** with lower TMU-style and failure rate. | E5 |
 | ✅ | **The C++/CUDA kernel makes edge refinement ~62x faster** than 48 CPU threads; PyTorch `grid_sample` is 22x slower than the texture kernel. | E10 |
 | ⚖️ | **Deformable convolutions:** no gain on simulated metrology, a small consistent gain on real SEM defects. | E4, E5, E9 |
-| ⚖️ | **CAD input:** no accuracy gain, and a lower contact-CD slope, i.e. some pull toward the design. | E6 |
+| ⚖️ | **CAD input:** no accuracy gain, and a consistently lower contact-CD and EPE slope across seeds, i.e. a pull toward the design. | E6 |
 | ⚠️ | **Registration, not the edge model, dominates EPE,** and it fails outside the process window. | E2, E5 |
 | ⚠️ | **Noise correction has clear limits:** PSD-plateau LER correction fails under correlated noise, and the LCDU excess is systematic. | E7 |
 | ⚠️ | **Learned contour models under-report roughness** by 4.5–6.8% at low noise; the classical tracer is unbiased. | E7 |
@@ -369,7 +369,7 @@ sem-cd-epe-metrology/
 
 - **Simulated SEM:** a controlled forward model, not an electron-matter simulator. No charging, resist shrinkage, focus variation, real scan distortion, drift or tool matching. Nothing here is validated on a production CD-SEM.
 - **Node:** LithoBench is 32/45 nm-class data; no claim about advanced nodes.
-- **Seeds:** U-Net and DCNv3 have 3 seeds; DCNv2, DCNv4 and the SEM-only model have 1. A physics-based (Monte Carlo) SEM check was not run.
+- **Seeds:** U-Net and DCNv3 have 3 seeds; DCNv4 and the SEM-only model have 2 (seed 3 not run); DCNv2 has 1. A physics-based (Monte Carlo) SEM check was not run.
 - **Real data:** Carinthia-S tests segmentation only; its rare classes have 1–8 test images.
 
 More: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) · full tables: [docs/RESULTS.md](docs/RESULTS.md) · design discussion (precision vs accuracy, TMU, CAD bias, edge models): [docs/METROLOGY_QA.md](docs/METROLOGY_QA.md)

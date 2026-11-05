@@ -23,8 +23,8 @@ GROUPS = [  # label, meas-name patterns (seed 1 first), note
     ("U-Net, SEM+CAD", ["screen_conv_cad_s1__learned", "confirm_conv_cad_s2__learned", "confirm_conv_cad_s3__learned"], ""),
     ("DCNv2, SEM+CAD", ["screen_dcnv2_cad_s1__learned"], ""),
     ("DCNv3, SEM+CAD (val-selected)", ["screen_dcnv3_cad_s1__learned", "confirm_dcnv3_cad_s2__learned", "confirm_dcnv3_cad_s3__learned"], ""),
-    ("DCNv4 (reimpl.), SEM+CAD", ["screen_dcnv4_cad_s1__learned"], ""),
-    ("DCNv3, SEM only (CAD test)", ["cadtest_dcnv3_semonly_s1__learned"], ""),
+    ("DCNv4 (reimpl.), SEM+CAD", ["screen_dcnv4_cad_s1__learned", "confirm_dcnv4_cad_s2__learned", "confirm_dcnv4_cad_s3__learned"], ""),
+    ("DCNv3, SEM only (CAD test)", ["cadtest_dcnv3_semonly_s1__learned", "cadtest_dcnv3_semonly_s2__learned", "cadtest_dcnv3_semonly_s3__learned"], ""),
     ("DCNv3 + 1D refine, SEM+CAD", ["screen_dcnv3_cad_s1__refine"], ""),
 ]
 

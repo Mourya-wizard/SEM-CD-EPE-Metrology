@@ -36,7 +36,7 @@ limits below in mind.
   correlate the noise along the edge, so the plateau under-estimates it. A repeat-noise correction is reported next
   to it, and results with SNR < 2 are flagged unreliable.
 - **Seeds and statistics**: confidence intervals are tile-level bootstraps (resampling test tiles), not training-seed
-  variation. Rows with one seed are single-seed results. See README "Scope and open items" for which runs have fewer seeds
+  variation. Rows with one seed are single-seed results. See the README Limitations section for which runs have fewer seeds
   than planned because of the compute-time budget.
 - **DCNv4** is a PyTorch reimplementation of the published module semantics, not the official CUDA operator (its build
   failed on this Windows/PyTorch 2.11 setup). Its speed says nothing about official DCNv4. DCNv3 uses the official
