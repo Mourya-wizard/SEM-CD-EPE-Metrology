@@ -20,8 +20,9 @@ export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 if [[ -x .venv/Scripts/python.exe ]]; then PY=.venv/Scripts/python.exe
 elif [[ -x .venv/bin/python ]]; then PY=.venv/bin/python
 else
-  SYS_PY="$(command -v python3 || command -v python)"
-  "$SYS_PY" -m venv .venv
+  # Windows: prefer the py launcher (python3 can be the Microsoft Store stub)
+  if command -v py >/dev/null 2>&1; then py -3.10 -m venv .venv || py -3 -m venv .venv
+  else "$(command -v python3 || command -v python)" -m venv .venv; fi
   if [[ -x .venv/Scripts/python.exe ]]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
   "$PY" -m pip install --upgrade pip
   "$PY" -m pip install -r requirements.txt

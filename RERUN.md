@@ -56,6 +56,19 @@ If `checkpoints/` already holds the trained models, skip steps 7–8: run steps 
 - **Carinthia-S** (139 MB): `curl -L -o data/carinthia/data.zip "https://zenodo.org/records/16895427/files/data.zip?download=1"`
   then `cd data/carinthia && unzip data.zip`.
 
+## CUDA compiler without a system install (Windows)
+The kernel build only needs the compiler components of the CUDA 12.8 toolkit. To keep them inside the project
+(no admin rights, no change to the display driver), download NVIDIA's official installer and extract the needed parts:
+```bash
+mkdir -p .cache/cuda_dl && cd .cache/cuda_dl
+curl -L -o cuda.exe https://developer.download.nvidia.com/compute/cuda/12.8.1/local_installers/cuda_12.8.1_572.61_windows.exe
+# MD5 05c59d04ac6c63686c6a0498e472c1e7 (NVIDIA's published md5sum.txt)
+/c/Windows/System32/tar.exe -xf cuda.exe cuda_nvcc/nvcc cuda_cudart/cudart cuda_cccl/thrust cuda_profiler_api/cuda_profiler_api cuda_nvrtc cuda_nvtx
+mkdir -p ../cuda/v12.8 && for d in */*/; do for s in bin include lib nvvm; do [ -d "$d$s" ] && cp -r "$d$s" ../cuda/v12.8/; done; done
+cd ../.. && rm -rf .cache/cuda_dl          # ~2.5 GB toolkit stays in .cache/cuda/v12.8, used by tools/cuda_env.bat
+```
+With a regular CUDA ≥ 12.8 installation instead, set `CUDA_HOME` to it.
+
 ## Checks
 ```bash
 $PY -m pytest tests          # 45 tests; 21 need the datasets, 7 need the CUDA extension
