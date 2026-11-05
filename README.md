@@ -274,7 +274,8 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt   # Linux: .venv/bin/python
 
-bash run_all.sh --smoke   # tests + a ~1-minute end-to-end pass on 4 tiles (needs the datasets, see below)
+bash run_all.sh --data    # create the environment and download the datasets (~15 min)
+bash run_all.sh --smoke   # tests + a ~1-minute end-to-end pass on 4 tiles
 bash run_all.sh           # full pipeline: data download, simulation, baselines, training through the GPU queue
 ```
 

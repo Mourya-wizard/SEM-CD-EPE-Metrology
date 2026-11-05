@@ -1,28 +1,28 @@
 # Rerunning the project
 
-Everything in this repository can be regenerated. Datasets, simulated SEM sets, training data and model weights are
-not stored in git; the commands below download or rebuild them. All commands run from the repository root in `bash`
+Everything can be regenerated from a bare clone. The Python environment, datasets, simulated SEM sets, training
+data, model weights and the CUDA compiler are not stored in git; `run_all.sh` creates, downloads or rebuilds them. All commands run from the repository root in `bash`
 (Git Bash on Windows). Use `.venv/Scripts/python.exe` on Windows and `.venv/bin/python` on Linux; it is written
 `$PY` below.
 
 ## Prerequisites
 - Python 3.10, `bash`, `curl`
 - NVIDIA GPU with a CUDA 12.8-compatible driver (tested on an RTX PRO 5000 Blackwell, sm_120)
-- About 60 GB free disk (LithoBench 39 GB while extracting, 24 GB after deleting the archive; simulated sets 7 GB; training crop bank 13 GB)
-- Optional, for the C++/CUDA kernel: `nvcc` ≥ 12.8 and a C++ compiler (MSVC on Windows). Set `CUDA_HOME` if the
-  toolkit is not on `PATH`.
+- About 60 GB free disk at peak (LithoBench 39 GB while extracting, 24 GB once the archive is deleted automatically;
+  Python environment 5 GB; simulated sets 7 GB; training crop bank 13 GB; CUDA compiler 2.5 GB)
+- For the C++/CUDA kernel: a C++ compiler (MSVC on Windows). On Windows `run_all.sh` fetches the CUDA 12.8 compiler
+  into the project if none is found; elsewhere install CUDA ≥ 12.8 or set `CUDA_HOME`.
 
-```bash
-python -m venv .venv                       # Windows: py -3.10 -m venv .venv
-$PY -m pip install -r requirements.txt
-```
+`run_all.sh` creates `.venv` and installs `requirements.txt` on first use (on Windows it uses the `py` launcher).
+To do it by hand: `py -3.10 -m venv .venv` (Linux: `python3 -m venv .venv`), then `$PY -m pip install -r requirements.txt`.
 
 ## Option 1: one command
 ```bash
 bash run_all.sh            # full rerun, ~12 hours on one GPU, resumable
-bash run_all.sh --smoke    # ~1 minute check once the datasets are present
+bash run_all.sh --data     # only create the environment and download the datasets (~15 min)
+bash run_all.sh --smoke    # tests + ~1 minute end-to-end check (downloads LithoBench if missing)
 ```
-The full run downloads both datasets, rebuilds the simulated validation/test sets, runs the classical baseline,
+The full run creates the environment, downloads both datasets, rebuilds the simulated validation/test sets, runs the classical baseline,
 trains every model through the GPU job queue, evaluates them, runs the real-SEM pipeline and the trust analysis,
 builds and checks the CUDA kernel, and regenerates every table and figure. Each step skips outputs that already
 exist, so an interrupted run continues where it stopped.
@@ -30,7 +30,7 @@ exist, so an interrupted run continues where it stopped.
 ## Option 2: step by step
 | Step | Command | Output | Time |
 |---|---|---|---|
-| 1. Datasets | first part of `bash run_all.sh` (stop after the downloads), or see *Manual download* | `data/lithobench/`, `data/carinthia/` | ~15 min |
+| 1. Environment + datasets | `bash run_all.sh --data`, or see *Manual download* | `.venv/`, `data/lithobench/`, `data/carinthia/` | ~15 min |
 | 2. Data audit and splits | `$PY src/data_lithobench.py --audit` | `results/splits.json` (already in git) | 1 min |
 | 3. Simulator checks | `$PY src/sem_sim.py --m2-report` | `results/simulator_checks/` | 1 min |
 | 4. Simulated val/test sets | `$PY src/evaluate.py cache --split val` and `--split test` | `results/raw/cache/` | ~6 min |
@@ -39,13 +39,14 @@ exist, so an interrupted run continues where it stopped.
 | 7. Training crop bank | `$PY src/train.py --build-bank` | `data/bank/` | ~3 min |
 | 8. Training | `$PY tools/run_queue.py start --runs configs/runs/screen_*.yaml configs/runs/confirm_*.yaml configs/runs/cadtest_*.yaml` | `checkpoints/<run>/` | ~6 GPU-hours |
 | 9. Evaluation, real SEM, trust analysis, figures | `$PY tools/reproduce_results.py` | `results/`, `docs/RESULTS.md` | ~5 hours |
-| 10. CUDA kernel | `cuda\build.bat` (Windows), then `$PY -m pytest tests/test_kernel.py` and `$PY benchmarks/bench_kernel.py parity` | `build/`, `results/cuda_kernel/` | ~2 min |
+| 10. CUDA kernel | `bash tools/get_cuda_windows.sh` (Windows, once), `cuda\build.bat`, then `$PY -m pytest tests/test_kernel.py` and `$PY benchmarks/bench_kernel.py parity` | `.cache/cuda/`, `build/`, `results/cuda_kernel/` | ~15 min first time, then ~2 min |
 
 The timing benchmark (`benchmarks/bench_kernel.py bench`) needs exclusive use of the GPU: create
 `results/gpu_exclusive.lock`, make sure no queue job is running, run it, then delete the lock.
 
 ## Option 3: re-evaluate trained models without retraining
-If `checkpoints/` already holds the trained models, skip steps 7–8: run steps 1, 4 and 5, then step 9.
+If `checkpoints/` holds trained models (for example copied from another machine), skip steps 7–8: run steps 1, 4 and 5,
+then step 9.
 `tools/reproduce_results.py` evaluates every checkpoint it finds and only computes what is missing.
 
 ## Manual download (if an automatic download fails)
@@ -57,17 +58,11 @@ If `checkpoints/` already holds the trained models, skip steps 7–8: run steps 
   then `cd data/carinthia && unzip data.zip`.
 
 ## CUDA compiler without a system install (Windows)
-The kernel build only needs the compiler components of the CUDA 12.8 toolkit. To keep them inside the project
-(no admin rights, no change to the display driver), download NVIDIA's official installer and extract the needed parts:
-```bash
-mkdir -p .cache/cuda_dl && cd .cache/cuda_dl
-curl -L -o cuda.exe https://developer.download.nvidia.com/compute/cuda/12.8.1/local_installers/cuda_12.8.1_572.61_windows.exe
-# MD5 05c59d04ac6c63686c6a0498e472c1e7 (NVIDIA's published md5sum.txt)
-/c/Windows/System32/tar.exe -xf cuda.exe cuda_nvcc/nvcc cuda_cudart/cudart cuda_cccl/thrust cuda_profiler_api/cuda_profiler_api cuda_nvrtc cuda_nvtx
-mkdir -p ../cuda/v12.8 && for d in */*/; do for s in bin include lib nvvm; do [ -d "$d$s" ] && cp -r "$d$s" ../cuda/v12.8/; done; done
-cd ../.. && rm -rf .cache/cuda_dl          # ~2.5 GB toolkit stays in .cache/cuda/v12.8, used by tools/cuda_env.bat
-```
-With a regular CUDA ≥ 12.8 installation instead, set `CUDA_HOME` to it.
+The kernel build only needs the compiler components of the CUDA 12.8 toolkit. `bash tools/get_cuda_windows.sh`
+downloads NVIDIA's official installer (3.4 GB, MD5-checked), extracts only those components into `.cache/cuda/v12.8`
+(~2.5 GB, used by `tools/cuda_env.bat`) and deletes the installer: no admin rights and no change to the display driver.
+`run_all.sh` calls it automatically on Windows when no CUDA toolkit is found. With a regular CUDA ≥ 12.8 installation,
+set `CUDA_HOME` to it instead.
 
 ## Checks
 ```bash
@@ -77,7 +72,8 @@ $PY tools/run_queue.py status
 ```
 
 ## Notes
-- On Windows, `python3` may resolve to the Microsoft Store stub; create the environment with `py -3.10 -m venv .venv`.
+- On Windows, `python3` may resolve to the Microsoft Store stub; `run_all.sh` therefore uses the `py` launcher.
+- To free disk after a run, delete `.venv/`, `data/`, `results/raw/`, `checkpoints/`, `.cache/` and `build/`; all are recreated by `run_all.sh`.
 - CPU-heavy steps use at most `eval.max_cpu_workers` processes (`configs/default.yaml`); training runs one job at a
   time because a concurrency pilot showed no throughput gain from running two.
 - Results are deterministic for a given seed; reruns reproduce the numbers in `results/` up to GPU floating-point

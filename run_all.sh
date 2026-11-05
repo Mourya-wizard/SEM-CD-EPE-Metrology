@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Reproduce the project from a clean clone.  Usage:  bash run_all.sh [--smoke]
-#   --smoke : environment + tests + a few-minute end-to-end pass on 2+2 validation tiles (needs data/ present
-#             or PROJECT_DATA_ROOT pointing at an existing data/ folder; downloads nothing large).
-#   (full)  : downloads both datasets (~15 GB), then runs everything end to end: data audit, simulator checks,
-#             cached validation/test sets, registration, classical baseline, GPU pilot, training of every model
-#             through the GPU queue, evaluations, real-SEM pipeline, trust analysis, C++/CUDA kernel, figures.
-#             No pretrained weights are needed. Takes roughly 12 hours on one GPU; every step is resumable.
+# Reproduce the project from a bare clone.  Usage:  bash run_all.sh [--data | --smoke]
+#   --data  : create .venv and download both datasets, then stop (~15 min).
+#   --smoke : environment + tests + a few-minute end-to-end pass on 2+2 validation tiles (downloads LithoBench
+#             if missing, or uses PROJECT_DATA_ROOT pointing at an existing data/ folder).
+#   (full)  : downloads both datasets, then runs everything end to end: data audit, simulator checks, cached
+#             validation/test sets, registration, classical baseline, GPU pilot, training of every model through
+#             the GPU queue, evaluations, real-SEM pipeline, trust analysis, C++/CUDA kernel (on Windows the CUDA
+#             compiler is fetched project-locally if missing), figures. No pretrained weights are needed.
+#             Takes roughly 12 hours on one GPU; every step is resumable.
 # Works under Git Bash on Windows (.venv/Scripts) and on Linux (.venv/bin). Never installs outside .venv.
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
-SMOKE=0; [[ "${1:-}" == "--smoke" ]] && SMOKE=1
+SMOKE=0; DATA_ONLY=0
+[[ "${1:-}" == "--smoke" ]] && SMOKE=1
+[[ "${1:-}" == "--data" ]] && DATA_ONLY=1
 
 export HF_HOME="$ROOT/.cache/huggingface" TORCH_HOME="$ROOT/.cache/torch" XDG_CACHE_HOME="$ROOT/.cache" MPLCONFIGDIR="$ROOT/.cache/mpl"
 export PIP_REQUIRE_VIRTUALENV=1 PIP_CACHE_DIR="$ROOT/.cache/pip" CUDA_VISIBLE_DEVICES=0
@@ -34,17 +38,18 @@ echo "[run_all] python: $PY"
 LB="${PROJECT_DATA_ROOT:-$ROOT/data}/lithobench"
 CA="${PROJECT_DATA_ROOT:-$ROOT/data}/carinthia"
 if [[ ! -d "$LB/MetalSet" ]]; then
-  if [[ $SMOKE == 1 ]]; then echo "[run_all] smoke needs LithoBench in $LB (set PROJECT_DATA_ROOT)"; exit 1; fi
   mkdir -p "$LB"
-  "$PY" -m gdown "https://drive.google.com/uc?id=1MzYiRRxi8Eu2L6WHCfZ1DtRnjVNOl4vu" -O "$LB/lithodata.tar.gz"
-  (cd "$LB" && tar xzf lithodata.tar.gz)
+  [[ -f "$LB/lithodata.tar.gz" ]] || "$PY" -m gdown "https://drive.google.com/uc?id=1MzYiRRxi8Eu2L6WHCfZ1DtRnjVNOl4vu" -O "$LB/lithodata.tar.gz"
+  (cd "$LB" && tar xzf lithodata.tar.gz) && rm -f "$LB/lithodata.tar.gz"   # archive is 14.7 GB; extracted copy is kept
 fi
 if [[ ! -f "$CA/data/carinthia-s.csv" && $SMOKE == 0 ]]; then
   mkdir -p "$CA"
   curl -sSL -o "$CA/data.zip" "https://zenodo.org/records/16895427/files/data.zip?download=1"
-  (cd "$CA" && unzip -q -o data.zip)
+  (cd "$CA" && unzip -q -o data.zip) && rm -f "$CA/data.zip"
   curl -sSL -o "$CA/carinthia-s_dataset.html" "https://zenodo.org/records/16895427/files/carinthia-s_dataset.html?download=1"
 fi
+
+if [[ $DATA_ONLY == 1 ]]; then echo "[run_all] datasets ready in ${PROJECT_DATA_ROOT:-$ROOT/data}"; exit 0; fi
 
 # ---------------------------------------------------------------------------------------------- smoke
 if [[ $SMOKE == 1 ]]; then
@@ -84,6 +89,9 @@ RUNS=$(ls configs/runs/screen_*.yaml configs/runs/confirm_*.yaml configs/runs/ca
 # Evaluations (validation + frozen test), classical test, trust analysis, real-SEM pipeline, tables and figures.
 "$PY" tools/reproduce_results.py
 # C++/CUDA kernel: needs nvcc >= 12.8 and a C++ compiler (MSVC on Windows); skipped otherwise.
+if [[ "${OS:-}" == "Windows_NT" ]] && ! command -v nvcc >/dev/null 2>&1 && [[ -z "${CUDA_HOME:-}" ]]; then
+  bash tools/get_cuda_windows.sh || echo "[run_all] could not fetch the CUDA compiler"
+fi
 if command -v nvcc >/dev/null 2>&1 || [[ -n "${CUDA_HOME:-}" || -d .cache/cuda/v12.8 ]]; then
   if [[ "${OS:-}" == "Windows_NT" ]]; then
     cmd //c "cuda\\build.bat"
