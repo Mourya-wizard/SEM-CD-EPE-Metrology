@@ -286,6 +286,8 @@ bash run_all.sh           # full pipeline: data download, simulation, baselines,
 | Simulated validation / test sets | generated locally from LithoBench | `results/raw/` | ~7 GB |
 
 ### Rerun everything from scratch
+Step-by-step options, re-evaluating trained models without retraining, and manual-download fallbacks: **[RERUN.md](RERUN.md)**.
+
 `bash run_all.sh` rebuilds every result in this README from a fresh clone, with nothing to download by hand:
 
 | Step | What happens automatically |
