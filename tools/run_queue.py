@@ -57,7 +57,7 @@ def _external_jobs(own_pids):
     """Project GPU jobs running that this queue did not start (e.g. from a previous queue process).
     Counts one per job: the Windows venv launcher and its interpreter child share a command line."""
     import psutil
-    pat = ("run-learned", "train.py", "carinthia.py")
+    pat = ("train.py", "carinthia.py")        # training only: evaluations are CPU-bound and may run beside training
     procs = {}
     for p in psutil.process_iter(["pid", "ppid", "cmdline"]):
         c = " ".join(p.info["cmdline"] or [])

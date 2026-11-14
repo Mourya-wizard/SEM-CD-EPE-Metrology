@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import registration as rg  # noqa: E402
 import sem_sim as ss  # noqa: E402
 from data_lithobench import load_config  # noqa: E402
-from models import build_model, n_params  # noqa: E402
+from models import build_for_run, n_params  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -107,8 +107,23 @@ def _dihedral(ts, k, flip):
     return [torch.flip(t, (-1,)) for t in out] if flip else out
 
 
+def spectral_loss(pred, tgt, f_lo=1 / 64, f_hi=1 / 4):
+    """E14: match the log power spectrum of the TSDF band along rows and columns for wavelengths of 4-64 px.
+    Same band mask for prediction and target, so mask-edge leakage cancels in expectation."""
+    m = (tgt.abs() < 1).float()
+    S = pred.shape[-1]
+    sel = (torch.fft.rfftfreq(S, device=pred.device) >= f_lo) & (torch.fft.rfftfreq(S, device=pred.device) <= f_hi)
+
+    def logps(z):
+        px = torch.fft.rfft(z, dim=-1).abs().pow(2).mean((0, 1, 2))
+        py = torch.fft.rfft(z, dim=-2).abs().pow(2).mean((0, 1, 3))
+        return torch.log(px + 1e-6)[sel], torch.log(py + 1e-6)[sel]
+    (ax, ay), (bx, by) = logps(pred * m), logps(tgt * m)
+    return ((ax - bx).abs().mean() + (ay - by).abs().mean()) / 2
+
+
 def make_batch(cfg, bank, rng, gen, device, cad=True, frames=None):
-    """Returns inputs (B,C,S,S), target TSDF (B,1,S,S), weight (B,1,S,S)."""
+    """Returns inputs (B,C,S,S), target TSDF (B,1,S,S), weight (B,1,S,S), aux targets {'offset': (B,) bloom offset px}."""
     sc, rc, tc = cfg["sim"], cfg["registration"], cfg["train"]
     S, M, B = cfg["lithobench"]["crop_px"], sc["margin_px"], tc["batch"]
     a, T, tm, wt = bank.get(rng.choice(bank.n, B, replace=False), device)
@@ -131,7 +146,7 @@ def make_batch(cfg, bank, rng, gen, device, cad=True, frames=None):
     trunc = cfg["model"]["tsdf_trunc_px"]
     tgt = (rg._warp(d, A, b, S) / trunc).clamp(-1, 1)
     w = 1.0 + tc["edge_weight"] * (tgt.abs() < 1).float()
-    return x, tgt, w
+    return x, tgt, w, {"offset": p["bloom_offset_px"]}
 
 
 # ----------------------------------------------------------------------------------------------- validation
@@ -212,7 +227,7 @@ def train(run_path, pilot_iters=None):
     mf = run.get("mem_fraction", cfg["queue"]["mem_fraction"])     # safe per-run allocation from the M4 pilot
     torch.cuda.set_per_process_memory_fraction(float(mf))
     torch.manual_seed(run["seed"]); np.random.seed(run["seed"])
-    model = build_model(cfg["model"], run["op"], 2 if run["cad"] else 1).to(device)
+    model = build_for_run(cfg["model"], run).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=tc["lr"], weight_decay=tc["weight_decay"])
     iters = pilot_iters or tc["iters"]
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(1.0, (i + 1) / tc["warmup"]) * 0.5 * (1 + math.cos(math.pi * min(i, iters) / iters)))
@@ -233,11 +248,15 @@ def train(run_path, pilot_iters=None):
     model.train()
     for it in range(it0, iters):
         ta = time.time()
-        x, tgt, w = make_batch(cfg, bank, rng, gen, device, cad=run["cad"])
+        x, tgt, w, aux = make_batch(cfg, bank, rng, gen, device, cad=run["cad"])
         torch.cuda.synchronize(); tb = time.time()
         with torch.autocast(device, dtype=torch.bfloat16):
-            pred = model(x)
+            pred, off = model(x, return_aux=True)
         loss = (w * (pred.float() - tgt).abs()).sum() / w.sum()
+        if tc.get("aux_offset_weight", 0) > 0:                       # E13: normalised per-image edge-offset regression
+            loss = loss + tc["aux_offset_weight"] * (off.float() - aux["offset"] / cfg["sim"]["train"]["bloom_offset_px"][1]).abs().mean()
+        if tc.get("spec_weight", 0) > 0:                             # E14: roughness spectrum matching
+            loss = loss + tc["spec_weight"] * spectral_loss(pred.float(), tgt)
         if not torch.isfinite(loss):
             _atomic_json(status_p, dict(info, state="nan", iter=it, iters=iters, best=best))
             print("NaN loss at iter", it, flush=True)

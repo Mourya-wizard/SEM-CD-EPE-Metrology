@@ -73,6 +73,8 @@ registration:
   ncc_border_px: 16
   corner_weight_px: 15.0           # template weight ramps 0->1 over this distance from design corners/line ends (0 = off)
   refine: none                     # none | translation | affine. Chosen on val (M3): affine/translation refinement did not beat coarse-only
+  mode: cad                        # cad | bias. bias = joint translation + global edge-bias search (E12), writes results/raw/reg_bias
+  bias_grid: [-14, -12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14]   # px, edges grown (+) or shrunk (-)
   affine_prior: 0.003              # prior std of affine deviation terms (matches sim training range)
   affine_prior_weight: 0.001       # weight of that prior relative to -NCC
   lbfgs_iters: 40

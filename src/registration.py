@@ -18,15 +18,16 @@ import torch.nn.functional as Fn
 from sem_sim import _blur, _grad_mag
 
 
-def design_template(T, rc):
+def design_template(T, rc, bias_px=0.0):
     """Matched CAD raster: render the design (B,H,W bool np) with the nominal SEM model (material step +
     edge bloom over the exact Euclidean signed distance of the design raster).
     Returns (template, weight) np float32 (B,H,W); weight ramps 0 -> 1 over rc['corner_weight_px'] away from
-    design corners / line ends, where printed shapes deviate most from the design (pullback, rounding)."""
+    design corners / line ends, where printed shapes deviate most from the design (pullback, rounding).
+    bias_px > 0 grows every feature by that many px (exposure-like edge bias), < 0 shrinks it."""
     from scipy import ndimage
     tm, wt = [], []
     for t in np.asarray(T, bool):
-        d = np.where(t, ndimage.distance_transform_edt(t) - 0.5, 0.5 - ndimage.distance_transform_edt(~t))
+        d = np.where(t, ndimage.distance_transform_edt(t) - 0.5, 0.5 - ndimage.distance_transform_edt(~t)) + bias_px
         z = np.clip(-d / 0.5, -50, 50)
         img = rc["tmpl_contrast"] / (1 + np.exp(z)) + rc["tmpl_bloom_amp"] * np.exp(-0.5 * (d / rc["tmpl_bloom_width_px"]) ** 2)
         tm.append(img.astype(np.float32))
@@ -57,6 +58,12 @@ def edge_map(x, sigma):
 
 def _coarse(es, ed, M):
     """Integer+parabolic peak of cross-correlation for shifts in [0, 2M]. Returns (B,2) [dx, dy] = design - SEM."""
+    return _coarse_scored(es, ed, M)[0]
+
+
+def _coarse_scored(es, ed, M, excl=5):
+    """As _coarse, plus the correlation peak value (B,) and the peak-to-sidelobe ratio (B,):
+    PSR = (peak - mean(sidelobe)) / std(sidelobe), sidelobe = correlation surface outside a (2*excl+1)^2 window."""
     B, _, S, _ = es.shape
     H, W = ed.shape[-2:]
     pad = torch.zeros(B, 1, H, W, device=es.device, dtype=es.dtype)
@@ -64,6 +71,13 @@ def _coarse(es, ed, M):
     c = torch.fft.irfft2(torch.fft.rfft2(ed) * torch.conj(torch.fft.rfft2(pad)), s=(H, W))[:, 0, :2 * M + 1, :2 * M + 1]
     flat = c.flatten(1).argmax(1)
     iy, ix = flat // (2 * M + 1), flat % (2 * M + 1)
+    peak = c.flatten(1).max(1).values
+    yy, xx = torch.meshgrid(torch.arange(2 * M + 1, device=c.device), torch.arange(2 * M + 1, device=c.device), indexing="ij")
+    out_win = ((yy[None] - iy[:, None, None]).abs() > excl) | ((xx[None] - ix[:, None, None]).abs() > excl)
+    n = out_win.sum((1, 2)).clamp(min=1)
+    mu = (c * out_win).sum((1, 2)) / n
+    sd = (((c - mu[:, None, None]) ** 2) * out_win).sum((1, 2)).div(n).sqrt().clamp(min=1e-8)
+    psr = (peak - mu) / sd
     out = []
     for i in range(B):
         y, x = int(iy[i]), int(ix[i])
@@ -73,7 +87,42 @@ def _coarse(es, ed, M):
         fx = sub(c[i, y, x - 1], c[i, y, x], c[i, y, x + 1]) if 0 < x < 2 * M else 0.0
         fy = sub(c[i, y - 1, x], c[i, y, x], c[i, y + 1, x]) if 0 < y < 2 * M else 0.0
         out.append([x + fx, y + fy])
-    return torch.tensor(out, device=es.device, dtype=es.dtype)
+    return torch.tensor(out, device=es.device, dtype=es.dtype), peak, psr
+
+
+def bias_features(T, rc, device):
+    """Template features for every edge bias in rc['bias_grid'] (px): (nb, 1, H, W) tensor of weighted, normalised
+    features, computed once per design crop T (H, W) bool and reused for every image of that crop."""
+    fm = edge_map if rc["feature"] == "edge" else smooth_norm
+    feats = []
+    for bp in rc["bias_grid"]:
+        tm, wt = design_template(np.asarray(T, bool)[None], rc, bias_px=float(bp))
+        t = torch.as_tensor(tm, device=device)[:, None]
+        feats.append(fm(t, rc["coarse_sigma_px"]) * torch.as_tensor(wt, device=device)[:, None])
+    return torch.cat(feats, 0)
+
+
+def register_biased(sem, feats, rc, M):
+    """Joint translation + global edge-bias registration (coarse search only, A = I). sem (B,1,S,S);
+    feats from bias_features. Returns A (B,2,2), b (B,2) as register(), plus the chosen bias (B,) in px,
+    the correlation peak (B,) and the peak-to-sidelobe ratio (B,) of the chosen template."""
+    S = sem.shape[-1]
+    c = (S - 1) / 2.0
+    fm = edge_map if rc["feature"] == "edge" else smooth_norm
+    es = fm(sem, rc["coarse_sigma_px"])
+    B, nb = sem.shape[0], feats.shape[0]
+    best_pk = torch.full((B,), -1e9, device=sem.device)
+    t0, bias, psr = torch.zeros(B, 2, device=sem.device), torch.zeros(B, device=sem.device), torch.zeros(B, device=sem.device)
+    grid = torch.as_tensor(rc["bias_grid"], device=sem.device, dtype=sem.dtype)
+    for k in range(nb):
+        sh, pk, ps = _coarse_scored(es, feats[k:k + 1].expand(B, -1, -1, -1), M)
+        up = pk > best_pk
+        best_pk = torch.where(up, pk, best_pk)
+        t0 = torch.where(up[:, None], sh, t0); bias = torch.where(up, grid[k], bias); psr = torch.where(up, ps, psr)
+    theta0 = torch.zeros(B, 6, device=sem.device, dtype=sem.dtype)
+    theta0[:, :2] = t0
+    A, b = _affine(theta0, c, rc["d_scale"])
+    return A, b, bias, best_pk, psr
 
 
 def _affine(theta, c, D_SCALE):

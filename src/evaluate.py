@@ -70,6 +70,12 @@ def raw_dir(cfg, *parts):
     return d
 
 
+def reg_dirname(cfg):
+    """Registration cache folder: 'reg' for the default CAD-template mode, 'reg_<mode>' for others (e.g. reg_bias)."""
+    m = cfg["registration"].get("mode", "cad")
+    return "reg" if m == "cad" else f"reg_{m}"
+
+
 def _atomic_savez(path, **arrs):
     tmp = path + ".tmp.npz"
     np.savez_compressed(tmp, **arrs)
@@ -144,23 +150,33 @@ def jobs_for_tile(cfg, set_name, tile, split):
 
 def register_tile(cfg, split, set_name, tile, device="cuda"):
     import registration as rg
-    path = os.path.join(raw_dir(cfg, "reg", split, set_name), tile + ".npz")
+    path = os.path.join(raw_dir(cfg, reg_dirname(cfg), split, set_name), tile + ".npz")
     if os.path.exists(path):
         return path
     rc, sc, M = cfg["registration"], cfg["sim"], cfg["sim"]["margin_px"]
     d = load_cache(os.path.join(raw_dir(cfg, "cache", split, set_name), tile + ".npz"))
-    tm, wt = rg.design_template(d["T"][None], rc)
-    tmt, wtt = torch.as_tensor(tm, device=device)[:, None], torch.as_tensor(wt, device=device)[:, None]
+    biased = rc.get("mode", "cad") == "bias"
+    if biased:
+        feats = rg.bias_features(d["T"], rc, device)
+    else:
+        tm, wt = rg.design_template(d["T"][None], rc)
+        tmt, wtt = torch.as_tensor(tm, device=device)[:, None], torch.as_tensor(wt, device=device)[:, None]
     jobs = jobs_for_tile(cfg, set_name, tile, split)
     A = np.zeros((len(jobs), 2, 2)); b = np.zeros((len(jobs), 2))
+    extra = {k: np.zeros(len(jobs)) for k in ("bias", "peak", "psr")}
     bs = 32
     for i in range(0, len(jobs), bs):
         chunk = jobs[i:i + bs]
         imgs = np.stack([eval_noisy(d["clean"][c], fr, int(d["seed"]) * 100 + c, r, sc) for c, fr, r in chunk])
         x = torch.as_tensor(imgs, device=device)[:, None]
-        Ae, be = rg.register(x, tmt.expand(len(chunk), -1, -1, -1), rc, M, weight=wtt.expand(len(chunk), -1, -1, -1))
-        A[i:i + len(chunk)], b[i:i + len(chunk)] = Ae.cpu().numpy(), be.cpu().numpy()
-    _atomic_savez(path, jobs=np.array(jobs), A=A, b=b)
+        sl = slice(i, i + len(chunk))
+        if biased:
+            Ae, be, bi, pk, ps = rg.register_biased(x, feats, rc, M)
+            extra["bias"][sl], extra["peak"][sl], extra["psr"][sl] = bi.cpu().numpy(), pk.cpu().numpy(), ps.cpu().numpy()
+        else:
+            Ae, be = rg.register(x, tmt.expand(len(chunk), -1, -1, -1), rc, M, weight=wtt.expand(len(chunk), -1, -1, -1))
+        A[sl], b[sl] = Ae.cpu().numpy(), be.cpu().numpy()
+    _atomic_savez(path, jobs=np.array(jobs), A=A, b=b, **(extra if biased else {}))
     return path
 
 
@@ -171,7 +187,7 @@ def _measure_tile_classical(args):
     torch.set_num_threads(1)
     sc = cfg["sim"]
     d = load_cache(os.path.join(cfg["paths"]["results"], "raw", "cache", split, set_name, tile + ".npz"))
-    r = np.load(os.path.join(cfg["paths"]["results"], "raw", "reg", split, set_name, tile + ".npz"))
+    r = np.load(os.path.join(cfg["paths"]["results"], "raw", reg_dirname(cfg), split, set_name, tile + ".npz"))
     rows = []
     for j, (c, fr, rep) in enumerate(r["jobs"]):
         if (reg_mode == "oracle" or rep0_only) and rep != 0:
@@ -531,7 +547,7 @@ def registration_report(cfg, split):
     import registration as rg
     for s, t in eval_tiles(cfg, split):
         z = np.load(os.path.join(cfg["paths"]["results"], "raw", "cache", split, s, t + ".npz"))
-        r = np.load(os.path.join(cfg["paths"]["results"], "raw", "reg", split, s, t + ".npz"))
+        r = np.load(os.path.join(cfg["paths"]["results"], "raw", reg_dirname(cfg), split, s, t + ".npz"))
         j = r["jobs"]
         sel = j[:, 2] == 0
         ec, em = rg.registration_error(r["A"][sel], r["b"][sel], z["A"][j[sel, 0]], z["b"][j[sel, 0]], S)
@@ -655,12 +671,12 @@ def run_learned(cfg, run_name, split, reg_mode="est", device="cuda", tiles=None,
     Also returns inference timing (median ms / image, batch 8, bf16) for the operator table."""
     import measure as ms
     import train as tr
-    from models import build_model
+    from models import build_for_run
     from scipy import ndimage
     ck = torch.load(os.path.join(os.path.dirname(cfg["paths"]["results"]), "checkpoints", run_name, "best.pt"),
                     map_location=device, weights_only=False)
     run = ck["run"]
-    model = build_model(cfg["model"], run["op"], 2 if run["cad"] else 1).to(device)
+    model = build_for_run(cfg["model"], run).to(device)
     model.load_state_dict(ck["model"]); model.eval()
     sc, S, trunc, hw = cfg["sim"], cfg["lithobench"]["crop_px"], cfg["model"]["tsdf_trunc_px"], cfg["gauges"]["probe_half_window_px"]
     rps = {fr: refine_params_for(cfg, fr) for fr in sc["frames"]}
@@ -673,7 +689,7 @@ def run_learned(cfg, run_name, split, reg_mode="est", device="cuda", tiles=None,
     for ti, (s, t) in enumerate(tiles):
         d = load_cache(os.path.join(cfg["paths"]["results"], "raw", "cache", split, s, t + ".npz"))
         agg = gg.GaugeAggregator(d["probes"])
-        r = np.load(os.path.join(cfg["paths"]["results"], "raw", "reg", split, s, t + ".npz"))
+        r = np.load(os.path.join(cfg["paths"]["results"], "raw", reg_dirname(cfg), split, s, t + ".npz"))
         jobs = [tuple(j) for j in r["jobs"].tolist()]
         if reg_mode == "oracle":
             jobs = [j for j in jobs if j[2] == 0]
@@ -703,7 +719,7 @@ def run_learned(cfg, run_name, split, reg_mode="est", device="cuda", tiles=None,
                                                     "cond": np.int16(c), "dose": np.int16(fr), "rep": np.int16(rep), "set": s, "tile": t}))
         if (ti + 1) % 10 == 0 or ti + 1 == len(tiles):
             print(f"  run-learned {run_name} {split} {reg_mode} {ti + 1}/{len(tiles)} tiles {time.time() - t0:.0f}s", flush=True)
-    suffix = "" if reg_mode == "est" else "_oraclereg"
+    suffix = ("" if reg_mode == "est" else "_oraclereg") + ("" if cfg["registration"].get("mode", "cad") == "cad" else "_reg" + cfg["registration"]["mode"])
     out = {}
     for name, key in (("learned", "learned"), ("learned+refine", "refine")):
         df = pd.concat(rows[name], ignore_index=True)
@@ -807,6 +823,7 @@ def _cli():
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["cache", "register", "baseline", "run-learned"])
     ap.add_argument("--split", default="val")
+    ap.add_argument("--regmode", default=None, help="cache/register: registration mode override (cad | bias)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--run", help="run-learned: eval job yaml {name, kind: eval, ckpt: <train run name>, split, reg: est|oracle}")
     a = ap.parse_args()
@@ -816,12 +833,16 @@ def _cli():
     if a.step == "run-learned":
         import yaml
         job = yaml.safe_load(open(a.run))
+        cfg["registration"]["mode"] = job.get("regmode", "cad")          # cad | bias (E12)
         torch.cuda.set_per_process_memory_fraction(float(job.get("mem_fraction", cfg["queue"]["mem_fraction"])))
         _, ms_img = run_learned(cfg, job["ckpt"], job["split"], job.get("reg", "est"))
         d = os.path.join(cfg["paths"]["results"], "raw", "meas", job["split"])
+        sfx = ("" if job.get("reg", "est") == "est" else "_oraclereg") + ("" if cfg["registration"]["mode"] == "cad" else "_reg" + cfg["registration"]["mode"])
         json.dump({"ckpt": job["ckpt"], "split": job["split"], "reg": job.get("reg", "est"), "infer_ms_per_img_bs8": ms_img},
-                  open(os.path.join(d, f"{job['ckpt']}{'' if job.get('reg', 'est') == 'est' else '_oraclereg'}__timing.json"), "w"))
+                  open(os.path.join(d, f"{job['ckpt']}{sfx}__timing.json"), "w"))
         return
+    if a.regmode:
+        cfg["registration"]["mode"] = a.regmode
     tiles = eval_tiles(cfg, a.split)
     t0 = time.time()
     for i, (s, t) in enumerate(tiles):

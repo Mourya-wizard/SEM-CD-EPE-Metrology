@@ -16,13 +16,13 @@ if __name__ == "__main__":
     import measure as ms
     import train as tr
     from data_lithobench import load_config
-    from models import build_model
+    from models import build_for_run
     run, sigma = sys.argv[1], float(sys.argv[2])
     cfg = load_config()
     cfg["roughness"]["rough_sigma_nm"] = [sigma]
     ck = torch.load(os.path.join(ROOT, "checkpoints", run, "best.pt"), map_location="cuda", weights_only=False)
     cad = ck["run"]["cad"]
-    model = build_model(cfg["model"], ck["run"]["op"], 2 if cad else 1).cuda()
+    model = build_for_run(cfg["model"], ck["run"]).cuda()
     model.load_state_dict(ck["model"])
     model.eval()
     _, T = ev.linespace_set(cfg)
