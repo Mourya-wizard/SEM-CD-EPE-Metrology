@@ -105,8 +105,9 @@ def contour_distance(mask):
     return np.where(mask, ndimage.distance_transform_edt(mask), ndimage.distance_transform_edt(~mask))
 
 
-def focus_stats(cam, dist, near=(4, 12)):
-    """Share of CAM mass within `near` px of the contour and the matching share of image area (chance level)."""
+def focus_stats(cam, dist, near=(4, 12), inside=None, far=16):
+    """Share of CAM mass within `near` px of the contour (with the chance level = area share), and, if `inside` (boolean
+    feature mask) is given, the mass inside features and the mass in the background farther than `far` px from any edge."""
     w = cam / max(cam.sum(), 1e-12)
     out = {}
     for r in near:
@@ -114,6 +115,11 @@ def focus_stats(cam, dist, near=(4, 12)):
         out[f"cam_within_{r}px"] = float(w[sel].sum())
         out[f"area_within_{r}px"] = float(sel.mean())
     out["cam_mean_dist_px"] = float((w * np.minimum(dist, 64)).sum())
+    if inside is not None:
+        inside = np.asarray(inside, bool)
+        bg = (~inside) & (dist >= far)
+        out["cam_inside_features"], out["area_inside_features"] = float(w[inside].sum()), float(inside.mean())
+        out[f"cam_far_background_{far}px"], out[f"area_far_background_{far}px"] = float(w[bg].sum()), float(bg.mean())
     return out
 
 

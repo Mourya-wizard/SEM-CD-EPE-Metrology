@@ -78,7 +78,7 @@ def explain_sim(cfg, model, run, item):
     dist = ex.contour_distance(item["truth"] > 0)
     row = {}
     for k in LAYERS:
-        row.update({f"{k}_{a}": v for a, v in ex.focus_stats(cams[k], dist).items()})
+        row.update({f"{k}_{a}": v for a, v in ex.focus_stats(cams[k], dist, inside=item["truth"] > 0).items()})
     offs = {}
     for level in ("dec_op1", "mid"):
         mag = ex.offset_magnitude(model, x, level)
@@ -148,7 +148,8 @@ def operators_cmd(cfg, runs, tag):
     df.to_csv(os.path.join(od, f"{tag}_stats.csv"), index=False)
     agg = df.groupby("model", sort=False).mean(numeric_only=True)
     agg.to_csv(os.path.join(od, f"{tag}_stats_mean.csv"))
-    print(agg[[c for c in agg.columns if c.startswith(("dec_op1_cam_within_4", "dec_op1_area_within_4", "off_dec_op1", "cad_att"))]].round(3).to_string())
+    cols = [c for c in agg.columns if c.startswith(("mid_cam_far", "mid_area_far", "mid_cam_inside", "dec_op1_cam_inside", "dec_op1_area_inside", "off_dec_op1", "cad_att"))]
+    print(agg[cols].round(3).T.to_string())
 
 
 def carinthia_cmd(cfg):
