@@ -34,6 +34,12 @@ def _atomic(path, obj):
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
         json.dump(obj, f, indent=1)
+    for _ in range(20):                       # Windows: a reader (monitor) can hold the file briefly
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            time.sleep(0.5)
     os.replace(tmp, path)
 
 
