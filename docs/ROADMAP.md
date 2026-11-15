@@ -124,3 +124,21 @@ Validation set, SEM-only DCNv3 baseline (seed 1), dose 8 frames, unless stated o
   (a peak-based edge finder would give −2).
 - Both pre-registered conditions (share ≥ 30%, |r| ≥ 0.5) hold, so the training experiment proceeds. The hypothesis that the CD floor is
   an edge-offset ambiguity is confirmed for the baseline model.
+
+### E13: edge-offset supervision (gates evaluated 2026-11-15)
+| Validation, SEM-only DCNv3, dose 8 | Baseline | Auxiliary offset head |
+|---|:--:|:--:|
+| CD TMU-style, ideal registration (nm) | 5.562 | 5.539 |
+| CD TMU-style, bias-aware registration (nm) | 6.015 | 5.994 |
+| Low-contrast stress RMSE (nm) | 2.129 | 2.131 |
+| Offset-head R² on validation images | n/a | **−0.008** |
+
+- **Gate 1** (ideal-registration TMU drop ≥ 0.30 nm): −0.02 nm. **Failed.** **Gate 2** (estimated-registration TMU not worse by more than 0.05 nm): passed.
+  **Gate 3** (stress RMSE not worse by more than 0.10 nm): passed. **Gate 4** (offset-head R² ≥ 0.5): **failed**.
+- **Decision:** the auxiliary head is not adopted; the baseline recipe stays and E14 is built on it.
+- **Interpretation:** step 0 showed that the CD error is almost entirely a per-image offset that tracks the bloom offset (r = −0.98). The head
+  shows that this offset cannot be recovered from an 8-frame image by this network (R² ≈ 0), so for an uncalibrated tool the ambiguity is an
+  irreducible edge-model term. Removing the per-image component from the validation errors would leave a residual variance of 8.8% of the
+  total, which corresponds to a CD 3σ of about 1.7 nm instead of 5.6 nm (derived from the decomposition, not measured with a model). In a real
+  recipe the edge-model offset is calibrated against reference metrology (for example cross-section TEM or AFM); this simulation randomises it per image
+  on purpose, so the TMU-style floor here is the cost of an uncalibrated edge model.

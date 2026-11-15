@@ -1,0 +1,24 @@
+{
+ "base": "cadtest_dcnv3_semonly_s1",
+ "new": "e13_dcnv3_semonly_aux_s1",
+ "oracle_cd_tmu": [
+  5.561540979003585,
+  5.538672337064292
+ ],
+ "est_cd_tmu": [
+  6.015025288209891,
+  5.994472228603412
+ ],
+ "stress_contrast_rmse": [
+  2.128705515262248,
+  2.1313638606653984
+ ],
+ "offset_head_r2": -0.007602355722956089,
+ "gates": {
+  "G1_oracle_tmu_drop_ge_0.30nm": false,
+  "G2_est_tmu_not_worse_0.05": true,
+  "G3_stress_rmse_not_worse_0.10": true,
+  "G4_offset_r2_ge_0.5": false
+ },
+ "adopt_aux_head": false
+}
