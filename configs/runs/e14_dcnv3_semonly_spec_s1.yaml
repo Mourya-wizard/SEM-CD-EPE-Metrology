@@ -1,0 +1,5 @@
+name: e14_dcnv3_semonly_spec_s1
+op: dcnv3
+cad: false
+seed: 1
+train: {spec_weight: 0.05}      # E14: roughness spectrum loss (weight fixed in advance)
