@@ -119,19 +119,19 @@ def unet_figure(cfg, op):
     stages = [
         dict(name="in", gap=0.0, arrow=None, slabs=[slab("In", "in", c=1, S=size, ctext="1 (+1)")]),
         dict(name="e0", gap=0.55, arrow="", slabs=[slab("CB", "conv", "stem"), slab("CB", "conv", "enc0", skip=0)]),
-        dict(name="e1", gap=1.25, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc1", skip=1)]),
-        dict(name="e2", gap=1.25, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc2"), slab("OB", "op", "encop2", skip=2)]),
-        dict(name="e3", gap=1.25, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc3"), slab("OB", "op", "encop3", skip=3)]),
-        dict(name="b", gap=1.25, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "midconv"), slab("OB", "op", "midop", gc="mid")]),
-        dict(name="d0", gap=1.25, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec0", cu=C("midop"), cs=C("encop3"), skip=3, ckey="dec0"),
+        dict(name="e1", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc1", skip=1)]),
+        dict(name="e2", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc2"), slab("OB", "op", "encop2", skip=2)]),
+        dict(name="e3", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc3"), slab("OB", "op", "encop3", skip=3)]),
+        dict(name="b", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "midconv"), slab("OB", "op", "midop", gc="mid")]),
+        dict(name="d0", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec0", cu=C("midop"), cs=C("encop3"), skip=3, ckey="dec0"),
                                                               slab("CB", "conv", "dec0"), slab("OB", "op", "decop0")]),
-        dict(name="d1", gap=1.25, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec1", cu=C("decop0"), cs=C("encop2"), skip=2),
+        dict(name="d1", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec1", cu=C("decop0"), cs=C("encop2"), skip=2),
                                                               slab("CB", "conv", "dec1"), slab("OB", "op", "decop1", gc="dec_op1")]),
-        dict(name="d2", gap=1.25, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec2", cu=C("decop1"), cs=C("enc1"), skip=1),
+        dict(name="d2", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec2", cu=C("decop1"), cs=C("enc1"), skip=1),
                                                               slab("CB", "conv", "dec2")]),
-        dict(name="d3", gap=1.25, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec3", cu=C("dec2"), cs=C("enc0"), skip=0),
+        dict(name="d3", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec3", cu=C("dec2"), cs=C("enc0"), skip=0),
                                                               slab("CB", "conv", "dec3", gc="last")]),
-        dict(name="h", gap=1.25, arrow="conv 1×1", slabs=[slab("Head", "head", "head")]),
+        dict(name="h", gap=1.4, arrow="conv 1×1", slabs=[slab("Head", "head", "head")]),
     ]
     # channel text / width / concat sizes
     for st in stages:
@@ -153,91 +153,90 @@ def unet_figure(cfg, op):
         st["x0"], st["x1"] = st["slabs"][0]["x"], x
     xend = x
 
-    TOPY, ARC = 2.95, {0: 2.25, 1: 1.88, 2: 1.51, 3: 1.14}
-    ROW = dict(block=-1.78, chan=-2.10, res=-2.50, gcam=-3.02, brk=-3.50, leg=-4.30)
-    xmin, ymin, ymax = -3.4, -4.75, 3.2
+    DY = 2.15
+    lvl = lambda Sx: int(round(math.log2(size / Sx)))
+    for st in stages:
+        for s in st["slabs"]:
+            s["h"] = 0.30 * (math.log2(s["S"]) - 3.33)          # height ~ log resolution (512 -> 1.70, 32 -> 0.50)
+            s["yc"] = -lvl(s["S"]) * DY
+            s["cy_top"], s["cy_bot"] = s["yc"] + s["h"] / 2, s["yc"] - s["h"] / 2
+    BLUE = "#1f5fa8"
+    xmin, ymax = -2.3, 2.5
+    ymin = -4 * DY - 3.1
     fig, ax = plt.subplots(figsize=((xend - xmin + 0.5) * SCALE, (ymax - ymin) * SCALE))
     ax.set_xlim(xmin, xend + 0.5); ax.set_ylim(ymin, ymax); ax.axis("off")
 
-    # arrows between stages (centre line)
-    for k in range(1, len(stages)):
-        a, b = stages[k - 1]["slabs"][-1], stages[k]["slabs"][0]
-        x_to = b["x"]
-        arrow(ax, [(a["x"] + a["w"], 0), (x_to, 0)])
-        if stages[k]["arrow"]:
-            ax.text((a["x"] + a["w"] + x_to) / 2, 0.10, stages[k]["arrow"], ha="center", va="bottom", fontsize=7.5, color=INK, linespacing=1.05)
+    # resolution guide lines and labels (one per level)
+    for L in range(5):
+        Sx = size // 2 ** L
+        ax.plot([xmin + 0.9, xend + 0.4], [-L * DY] * 2, color="#c8c8c8", lw=0.6, ls=(0, (1, 3)), zorder=0)
+        ax.text(xmin + 0.8, -L * DY + 0.1, f"{Sx}×{Sx}", ha="right", va="bottom", fontsize=8.5)
+        ax.text(xmin + 0.8, -L * DY - 0.1, f"(1/{2 ** L})", ha="right", va="top", fontsize=7.5, color=GREY)
 
     # slabs
     for st in stages:
         for s in st["slabs"]:
-            x0, hh, ww = s["x"], s["h"], s["w"]
+            x0, hh, ww, y0 = s["x"], s["h"], s["w"], s["yc"]
             if s["kind"] == "cat":
                 wu = ww * s["cu"] / (s["cu"] + s["cs"])
-                ax.add_patch(Rectangle((x0, -hh / 2), wu, hh, fc=UP, ec=INK, lw=0.9, zorder=2))
-                ax.add_patch(Rectangle((x0 + wu, -hh / 2), ww - wu, hh, fc=SKIP, ec=INK, lw=0.9, zorder=2))
-                s["skip_cx"] = x0 + wu + (ww - wu) / 2
+                s["wu"] = wu
+                ax.add_patch(Rectangle((x0, y0 - hh / 2), wu, hh, fc=UP, ec=INK, lw=0.9, zorder=2))
+                ax.add_patch(Rectangle((x0 + wu, y0 - hh / 2), ww - wu, hh, fc=SKIP, ec=INK, lw=0.9, zorder=2))
             else:
                 fc = {"in": INP, "conv": CB, "op": oc, "head": HEAD}[s["kind"]]
-                ax.add_patch(Rectangle((x0, -hh / 2), ww, hh, fc=fc, ec=INK, lw=1.2 if s["kind"] == "op" else 0.9, zorder=2))
+                ax.add_patch(Rectangle((x0, y0 - hh / 2), ww, hh, fc=fc, ec=INK, lw=1.2 if s["kind"] == "op" else 0.9, zorder=2))
+            ax.text(s["cx"], s["cy_top"] + 0.17, s["ctext"], ha="center", va="center", fontsize=8)
+            ax.text(s["cx"], s["cy_bot"] - 0.2, s["lab"], ha="center", va="center", fontsize=8.5, weight="bold" if s["kind"] == "op" else "normal")
             if s.get("gc"):
-                ax.add_patch(Rectangle((x0 - 0.04, -hh / 2 - 0.05), ww + 0.08, hh + 0.10, fc="none", ec=RED, lw=1.8, ls=(0, (3, 1.6)), zorder=4))
-            # rows
-            ax.text(s["cx"], ROW["block"], s["lab"], ha="center", va="center", fontsize=8.5, weight="bold" if s["kind"] == "op" else "normal")
-            ax.text(s["cx"], ROW["chan"], s["ctext"], ha="center", va="center", fontsize=8)
-            if s.get("gc"):
-                ax.plot([s["cx"]], [ROW["gcam"] + 0.05], marker="^", ms=6, color=RED, zorder=5)
-                ax.text(s["cx"], ROW["gcam"] - 0.2, s["gc"], ha="center", va="center", fontsize=7.5, color=RED)
-        mid = (st["x0"] + st["x1"]) / 2
-        Sx = st["slabs"][0]["S"]
-        ax.text(mid, ROW["res"], f"{Sx}×{Sx}", ha="center", va="center", fontsize=8)
-        ax.text(mid, ROW["res"] - 0.22, f"(1/{size // Sx})", ha="center", va="center", fontsize=7, color=GREY)
+                ax.add_patch(Rectangle((x0 - 0.05, y0 - hh / 2 - 0.05), ww + 0.10, hh + 0.10, fc="none", ec=RED, lw=1.8, ls=(0, (3, 1.6)), zorder=4))
+                ax.text(s["cx"], s["cy_bot"] - 0.5, f"▲ {s['gc']}", ha="center", va="center", fontsize=7.5, color=RED)
 
-    # skip connections: orthogonal dashed polylines, nested by level (outer = highest)
+    # arrows between stages: down = conv 3x3 stride 2 (black), up = bilinear x2 (blue), flat = in / head
+    for k in range(1, len(stages)):
+        a, b, nm = stages[k - 1]["slabs"][-1], stages[k]["slabs"][0], stages[k]["name"]
+        if nm in ("e0", "h"):
+            arrow(ax, [(a["x"] + a["w"], a["yc"]), (b["x"], b["yc"])])
+            if nm == "h":
+                ax.text((a["x"] + a["w"] + b["x"]) / 2, a["yc"] + 0.12, "1×1", ha="center", va="bottom", fontsize=7.5)
+        elif nm in ("e1", "e2", "e3", "b"):
+            arrow(ax, [(a["x"] + a["w"], a["yc"] - 0.36 * a["h"]), (b["x"], b["yc"] + 0.0)])
+        else:
+            arrow(ax, [(a["x"] + a["w"], a["yc"]), (b["x"], b["yc"] - 0.34 * b["h"])], color=BLUE)
+
+    # skip connections (horizontal at each level)
     src = {s["skip"]: s for st in stages for s in st["slabs"] if s["kind"] != "cat" and "skip" in s}
     dst = {s["skip"]: s for st in stages for s in st["slabs"] if s["kind"] == "cat"}
     for k in range(4):
         a, b = src[k], dst[k]
-        ya = ARC[k]
-        arrow(ax, [(a["cx"], a["h"] / 2 + 0.02), (a["cx"], ya), (b["skip_cx"], ya), (b["skip_cx"], b["h"] / 2 + 0.02)],
-              color=RED, lw=1.1, ls=(0, (4, 2)), ms=8)
-        ax.text((a["cx"] + b["skip_cx"]) / 2, ya + 0.05, f"skip {k}", ha="center", va="bottom", fontsize=7.5, color=RED, style="italic")
+        arrow(ax, [(a["x"] + a["w"], a["yc"]), (b["x"], b["yc"])], color=RED, lw=1.1, ls=(0, (4, 2)), ms=8)
+        ax.text((a["x"] + a["w"] + b["x"]) / 2, a["yc"] + 0.07, f"skip {k}: concat", ha="center", va="bottom", fontsize=8, color=RED, style="italic")
 
-    # row headers + hairlines
-    for key, txt in (("block", "Block"), ("chan", f"Channels ($w$ = {w})"), ("res", "Resolution"), ("gcam", "Grad-CAM")):
-        ax.text(xmin + 0.05, ROW[key] - (0.11 if key == "res" else 0), txt, ha="left", va="center", fontsize=8.5, weight="bold")
-    for yy in (ROW["block"] + 0.22, ROW["gcam"] - 0.42):
-        ax.plot([xmin, xend + 0.4], [yy, yy], color="#bbbbbb", lw=0.6, zorder=1)
-    # encoder / bottleneck / decoder brackets
-    def bracket(i0, i1, txt):
-        xa, xb = stages[i0]["x0"], stages[i1]["x1"]
-        yb = ROW["brk"]
-        ax.plot([xa, xa, xb, xb], [yb + 0.1, yb, yb, yb + 0.1], color=INK, lw=0.9)
-        ax.text((xa + xb) / 2, yb - 0.2, txt, ha="center", va="center", fontsize=9, style="italic")
-    bracket(1, 4, "Encoder"); bracket(5, 5, "Bottleneck"); bracket(6, 9, "Decoder")
+    ax.text(0.0, 1.62, "Encoder", fontsize=9.5, style="italic", ha="left", va="center")
+    ax.text(xend, 1.62, "Decoder", fontsize=9.5, style="italic", ha="right", va="center")
+    ax.text((src[3]["x"] + dst[3]["x"]) / 2 + 0.0, -4 * DY - 1.15, "Bottleneck", fontsize=9.5, style="italic", ha="center", va="center")
 
-    # legend
-    lx, ly = xmin + 0.05, ROW["leg"]
-    items = [("CB", "ConvBlock: 3×3 conv, GroupNorm, GELU", CB, None),
-             ("OB", f"Operator block ({SHORT[op]}): x + Op(GELU(GN(x)))", oc, None),
-             ("Cat", "Concat: upsampled | skip", None, "cat"),
-             ("Head", "1×1 conv → TSDF", HEAD, None)]
-    cx = lx
-    for lab, txt, fc, special in items:
+    # legend (two rows)
+    lx, ly = xmin + 0.1, -4 * DY - 1.75
+    def swatch(cx, y, fc, special=None):
         if special:
-            ax.add_patch(Rectangle((cx, ly - 0.14), 0.15, 0.28, fc=UP, ec=INK, lw=0.8)); ax.add_patch(Rectangle((cx + 0.15, ly - 0.14), 0.15, 0.28, fc=SKIP, ec=INK, lw=0.8))
-            cx2 = cx + 0.4
+            ax.add_patch(Rectangle((cx, y - 0.14), 0.15, 0.28, fc=UP, ec=INK, lw=0.8)); ax.add_patch(Rectangle((cx + 0.15, y - 0.14), 0.15, 0.28, fc=SKIP, ec=INK, lw=0.8))
         else:
-            ax.add_patch(Rectangle((cx, ly - 0.14), 0.3, 0.28, fc=fc, ec=INK, lw=0.8)); cx2 = cx + 0.4
-        ax.text(cx2, ly, txt, va="center", fontsize=8)
-        cx = cx2 + 0.115 * len(txt) + 0.45
-    ax.add_patch(Rectangle((cx, ly - 0.14), 0.3, 0.28, fc="none", ec=RED, lw=1.6, ls=(0, (3, 1.6))))
-    ax.text(cx + 0.4, ly, "Grad-CAM layer (E11)", va="center", fontsize=8, color=RED)
-    ax.text(lx, ly - 0.42, "Slab height ~ log resolution, width ~ channels. Dashed red: skip connections (channel concatenation). "
-            f"Input 1 channel (SEM) or 2 channels (SEM + CAD). Output: 1-channel TSDF at {size}×{size}.",
+            ax.add_patch(Rectangle((cx, y - 0.14), 0.3, 0.28, fc=fc, ec=INK, lw=0.8))
+    cx = lx
+    for txt, fc, sp in (("CB  ConvBlock: 3×3 conv, GroupNorm, GELU", CB, None), (f"OB  Operator block ({SHORT[op]}): x + Op(GELU(GN(x)))", oc, None),
+                        ("Cat  Concat: upsampled | skip", None, "cat"), ("1×1 conv → TSDF head", HEAD, None)):
+        swatch(cx, ly, fc, sp); ax.text(cx + 0.42, ly, txt, va="center", fontsize=8); cx += 0.42 + 0.108 * len(txt) + 0.5
+    cx = lx; ly2 = ly - 0.5
+    for col, ls_, txt in ((INK, "-", "3×3 conv, stride 2"), (BLUE, "-", "bilinear ×2"), (RED, (0, (4, 2)), "skip connection (channel concat)")):
+        arrow(ax, [(cx, ly2), (cx + 0.7, ly2)], color=col, ls=ls_, ms=8)
+        ax.text(cx + 0.85, ly2, txt, va="center", fontsize=8); cx += 0.85 + 0.108 * len(txt) + 0.5
+    ax.add_patch(Rectangle((cx, ly2 - 0.14), 0.3, 0.28, fc="none", ec=RED, lw=1.6, ls=(0, (3, 1.6))))
+    ax.text(cx + 0.42, ly2, "Grad-CAM layer (E11)", va="center", fontsize=8, color=RED)
+    ax.text(lx, ly2 - 0.5, f"Slab height ~ log resolution, width ~ channels (numbers above slabs). Input 1 channel (SEM) or 2 channels (SEM + CAD); output: 1-channel TSDF at {size}×{size}.",
             fontsize=7.5, color=GREY, va="center")
-    ax.text(xmin + 0.05, TOPY + 0.12,
+    ax.text(xmin + 0.1, ymax - 0.05,
             f"{NAMES[op][0].upper() + NAMES[op][1:]} U-Net   ·   $w$ = {w}   ·   {n_params(m1) / 1e6:.2f} M parameters (SEM-only), {n_params(m2) / 1e6:.2f} M (SEM + CAD)",
-            fontsize=11.5, weight="bold", va="bottom")
+            fontsize=11.5, weight="bold", va="top")
     for ext, kw in (("png", dict(dpi=300)), ("svg", {}), ("pdf", {})):
         fig.savefig(os.path.join(OUT, f"unet_{op}.{ext}"), bbox_inches="tight", facecolor="white", **kw)
     plt.close(fig)
