@@ -1,0 +1,39 @@
+{
+ "run": "cadtest_dcnv3_semonly_s1",
+ "dose": 8,
+ "cad": {
+  "outside_cd_fail": 0.43490715132358754,
+  "inside_epe1d_tmu3s": 7.749172322642639,
+  "inside_cd_tmu3s": 6.709078691398252,
+  "inside_cd_fail": 0.048769546270187134
+ },
+ "bias": {
+  "outside_cd_fail": 0.026175424733306994,
+  "inside_epe1d_tmu3s": 5.292465905017739,
+  "inside_cd_tmu3s": 6.015025288209891,
+  "inside_cd_fail": 0.012496795693411946
+ },
+ "registration": {
+  "cad_mislock_rate": 0.5053030303030303,
+  "bias_mislock_rate": 0.16666666666666666,
+  "cad_err_median_px": 3.081502995319399,
+  "bias_err_median_px": 1.9381576055254213,
+  "psr_auc_bias": 0.5487396694214876,
+  "psr_auc_bias_outside": 0.5901474201474202
+ },
+ "oracle": {
+  "outside_cd_fail": 0.01935993678387989,
+  "inside_epe1d_tmu3s": 2.9137754093202917,
+  "inside_cd_tmu3s": 5.561540979003585,
+  "inside_cd_fail": 0.00807485260189695
+ },
+ "gates": {
+  "G1_outside_failure_halved": true,
+  "G2_inside_epe_not_worse": true,
+  "G3_psr_auc_ge_0.85": false
+ },
+ "decision": {
+  "adopt_bias_registration": true,
+  "adopt_psr_flag": false
+ }
+}

@@ -92,4 +92,35 @@ of each seed with the chosen registration. Report a stage table (baseline → +E
 regenerate the Grad-CAM figures for the final model.
 
 ## 8. Results
-Filled in as each experiment finishes (see the end of this file).
+
+Validation set, SEM-only DCNv3 baseline (seed 1), dose 8 frames, unless stated otherwise. Files are in `results/registration_e12/` and `results/roadmap_gates/`.
+
+### E12: bias-aware registration (gates evaluated 2026-11-15)
+| Validation, SEM-only DCNv3 | CAD template | Bias-aware | Ideal registration |
+|---|:--:|:--:|:--:|
+| CD failure outside the training range | 43.5% | **2.6%** | 1.9% |
+| EPE TMU-style, inside range (nm) | 7.75 | **5.29** | 2.91 |
+| CD TMU-style, inside range (nm) | 6.71 | **6.02** | 5.56 |
+| CD failure inside range | 4.9% | **1.2%** | 0.8% |
+
+| Registration accuracy (validation, all doses at 8 frames) | CAD template | Bias-aware |
+|---|:--:|:--:|
+| Registrations off by more than 3 px | 50.5% | **16.7%** |
+| Median centre error (px) | 3.08 | **1.94** |
+
+- **Gate 1** (outside-range failures ≤ 50% of the CAD value): 43.5% → 2.6%. **Passed.**
+- **Gate 2** (inside EPE TMU-style not worse by more than 0.10 nm): 7.75 → 5.29 nm. **Passed.**
+- **Gate 3** (PSR flag ROC AUC ≥ 0.85 for detecting a registration error above 3 px): AUC 0.55 (0.59 outside the range). **Failed.**
+- **Decision:** the bias-aware registration replaces the CAD-template registration in all later evaluations (E13, E14 and the final test). The PSR flag is not adopted.
+- **By-product:** the estimated global edge bias follows the true exposure shift. After removing the constant 2.4 px offset between
+  printed and design edges, estimated and true shifts agree within 1.4 px over the whole sweep (for example +11.7 vs +10.3 px at threshold 0.190 and
+  −10.6 vs −10.7 px at 0.260), so the registration also acts as an exposure-bias monitor.
+- **What remains:** the gap to ideal registration (EPE 5.29 vs 2.91 nm) is placement that cannot be separated from printing effects using the SEM image
+  and the design alone.
+
+### E13 step 0: is the CD error a per-image offset? (baseline, ideal registration, inside range)
+- The per-image component carries **91.2%** of the CD error variance (300 images, 15,478 gauges).
+- The per-image mean error correlates with the image's bloom offset at **r = −0.979**, with a slope of −1.87 nm per px of offset
+  (a peak-based edge finder would give −2).
+- Both pre-registered conditions (share ≥ 30%, |r| ≥ 0.5) hold, so the training experiment proceeds. The hypothesis that the CD floor is
+  an edge-offset ambiguity is confirmed for the baseline model.

@@ -1,0 +1,12 @@
+{
+ "base": "cadtest_dcnv3_semonly_s1",
+ "n_gauges": 15478,
+ "n_images": 300,
+ "error_var_nm2": 3.4522283343879185,
+ "per_image_share": 0.9115116182746467,
+ "pearson_r_error_vs_offset": -0.9792904656335581,
+ "slope_nm_per_px": -1.8697901978055114,
+ "gate_share_ge_0.30": true,
+ "gate_abs_r_ge_0.5": true,
+ "proceed_to_training": true
+}
