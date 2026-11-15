@@ -1,0 +1,22 @@
+{
+ "registration": {
+  "mislock_cad": 0.5053030303030303,
+  "mislock_bias": 0.16666666666666666,
+  "err_med_cad": 3.081502995319399,
+  "err_med_bias": 1.9381576055254213,
+  "psr_auc": 0.5487396694214876,
+  "psr_auc_outside": 0.5901474201474202
+ },
+ "classical_cad": {
+  "outside_cd_fail": 0.4593046226787831,
+  "inside_epe1d_tmu3s": 7.621427679358904,
+  "inside_cd_tmu3s": 7.203703362894809,
+  "inside_cd_fail": 0.08100487054601384
+ },
+ "classical_bias": {
+  "outside_cd_fail": 0.0705254839984196,
+  "inside_epe1d_tmu3s": 5.437990987975843,
+  "inside_cd_tmu3s": 6.662902564869613,
+  "inside_cd_fail": 0.03960522942835171
+ }
+}

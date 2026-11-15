@@ -1,0 +1,5 @@
+name: e13_dcnv3_semonly_aux_s1
+op: dcnv3
+cad: false
+seed: 1
+train: {aux_offset_weight: 0.05}      # E13: auxiliary per-image edge-offset regression (weight fixed in advance)

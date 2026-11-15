@@ -61,33 +61,51 @@ def _coarse(es, ed, M):
     return _coarse_scored(es, ed, M)[0]
 
 
-def _coarse_scored(es, ed, M, excl=5):
-    """As _coarse, plus the correlation peak value (B,) and the peak-to-sidelobe ratio (B,):
-    PSR = (peak - mean(sidelobe)) / std(sidelobe), sidelobe = correlation surface outside a (2*excl+1)^2 window."""
+def _corr(es, ed, M):
+    """Cross-correlation surface over shifts [0, 2M]^2: (B, 2M+1, 2M+1)."""
     B, _, S, _ = es.shape
     H, W = ed.shape[-2:]
     pad = torch.zeros(B, 1, H, W, device=es.device, dtype=es.dtype)
     pad[..., :S, :S] = es
-    c = torch.fft.irfft2(torch.fft.rfft2(ed) * torch.conj(torch.fft.rfft2(pad)), s=(H, W))[:, 0, :2 * M + 1, :2 * M + 1]
+    return torch.fft.irfft2(torch.fft.rfft2(ed) * torch.conj(torch.fft.rfft2(pad)), s=(H, W))[:, 0, :2 * M + 1, :2 * M + 1]
+
+
+def _peak_stats(c, excl=5):
+    """Vectorised peak position / value and peak-to-sidelobe ratio of correlation surfaces c (B, n, n):
+    PSR = (peak - mean(sidelobe)) / std(sidelobe), sidelobe = surface outside a (2*excl+1)^2 window."""
+    B, n, _ = c.shape
     flat = c.flatten(1).argmax(1)
-    iy, ix = flat // (2 * M + 1), flat % (2 * M + 1)
+    iy, ix = flat // n, flat % n
     peak = c.flatten(1).max(1).values
-    yy, xx = torch.meshgrid(torch.arange(2 * M + 1, device=c.device), torch.arange(2 * M + 1, device=c.device), indexing="ij")
+    yy, xx = torch.meshgrid(torch.arange(n, device=c.device), torch.arange(n, device=c.device), indexing="ij")
     out_win = ((yy[None] - iy[:, None, None]).abs() > excl) | ((xx[None] - ix[:, None, None]).abs() > excl)
-    n = out_win.sum((1, 2)).clamp(min=1)
-    mu = (c * out_win).sum((1, 2)) / n
-    sd = (((c - mu[:, None, None]) ** 2) * out_win).sum((1, 2)).div(n).sqrt().clamp(min=1e-8)
-    psr = (peak - mu) / sd
+    cnt = out_win.sum((1, 2)).clamp(min=1)
+    mu = (c * out_win).sum((1, 2)) / cnt
+    sd = (((c - mu[:, None, None]) ** 2) * out_win).sum((1, 2)).div(cnt).sqrt().clamp(min=1e-8)
+    return iy, ix, peak, (peak - mu) / sd
+
+
+def _subpixel(c, iy, ix):
+    """Parabolic sub-pixel peak refinement: (B, 2) [dx, dy] in shift units."""
+    n = c.shape[-1]
     out = []
-    for i in range(B):
+    for i in range(c.shape[0]):
         y, x = int(iy[i]), int(ix[i])
+
         def sub(a, b_, cc):
             d = a - 2 * b_ + cc
             return float(0.5 * (a - cc) / d) if abs(float(d)) > 1e-12 else 0.0
-        fx = sub(c[i, y, x - 1], c[i, y, x], c[i, y, x + 1]) if 0 < x < 2 * M else 0.0
-        fy = sub(c[i, y - 1, x], c[i, y, x], c[i, y + 1, x]) if 0 < y < 2 * M else 0.0
+        fx = sub(c[i, y, x - 1], c[i, y, x], c[i, y, x + 1]) if 0 < x < n - 1 else 0.0
+        fy = sub(c[i, y - 1, x], c[i, y, x], c[i, y + 1, x]) if 0 < y < n - 1 else 0.0
         out.append([x + fx, y + fy])
-    return torch.tensor(out, device=es.device, dtype=es.dtype), peak, psr
+    return torch.tensor(out, device=c.device, dtype=c.dtype)
+
+
+def _coarse_scored(es, ed, M, excl=5):
+    """As _coarse, plus the correlation peak value (B,) and the peak-to-sidelobe ratio (B,)."""
+    c = _corr(es, ed, M)
+    iy, ix, peak, psr = _peak_stats(c, excl)
+    return _subpixel(c, iy, ix), peak, psr
 
 
 def bias_features(T, rc, device):
@@ -112,13 +130,19 @@ def register_biased(sem, feats, rc, M):
     es = fm(sem, rc["coarse_sigma_px"])
     B, nb = sem.shape[0], feats.shape[0]
     best_pk = torch.full((B,), -1e9, device=sem.device)
-    t0, bias, psr = torch.zeros(B, 2, device=sem.device), torch.zeros(B, device=sem.device), torch.zeros(B, device=sem.device)
+    best_c = None
+    iy, ix = torch.zeros(B, dtype=torch.long, device=sem.device), torch.zeros(B, dtype=torch.long, device=sem.device)
+    bias, psr = torch.zeros(B, device=sem.device), torch.zeros(B, device=sem.device)
     grid = torch.as_tensor(rc["bias_grid"], device=sem.device, dtype=sem.dtype)
     for k in range(nb):
-        sh, pk, ps = _coarse_scored(es, feats[k:k + 1].expand(B, -1, -1, -1), M)
+        ck = _corr(es, feats[k:k + 1].expand(B, -1, -1, -1), M)
+        y_, x_, pk, ps = _peak_stats(ck)
         up = pk > best_pk
         best_pk = torch.where(up, pk, best_pk)
-        t0 = torch.where(up[:, None], sh, t0); bias = torch.where(up, grid[k], bias); psr = torch.where(up, ps, psr)
+        best_c = ck if best_c is None else torch.where(up[:, None, None], ck, best_c)
+        iy, ix = torch.where(up, y_, iy), torch.where(up, x_, ix)
+        bias, psr = torch.where(up, grid[k], bias), torch.where(up, ps, psr)
+    t0 = _subpixel(best_c, iy, ix)                                  # sub-pixel refinement of the winning surface only
     theta0 = torch.zeros(B, 6, device=sem.device, dtype=sem.dtype)
     theta0[:, :2] = t0
     A, b = _affine(theta0, c, rc["d_scale"])
