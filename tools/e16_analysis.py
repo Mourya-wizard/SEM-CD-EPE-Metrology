@@ -51,8 +51,13 @@ def sim_row(cfg, truth, run):
 
 
 def real_row(name):
+    """Best val Dice from the run's checkpoint dir; if that checkpoint no longer exists, the value recorded in the
+    published results/carinthia/carinthia_summary.json (same config; retrained seed-1 runs agreed within 0.002)."""
     p = os.path.join(ROOT, "checkpoints", name, "metrics.json")
-    return float(json.load(open(p))["best_val_dice_defect"]) if os.path.exists(p) else float("nan")
+    if os.path.exists(p):
+        return float(json.load(open(p))["best_val_dice_defect"])
+    rec = {r["name"]: r["best_val_dice_defect"] for r in json.load(open(os.path.join(ROOT, "results", "carinthia", "carinthia_summary.json")))["runs"]}
+    return float(rec.get(name, float("nan")))
 
 
 def main():

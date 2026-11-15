@@ -1,0 +1,16 @@
+group,seed,run,val_dice
+conv_w32,1,carinthia_conv_s1,0.9447760308852401
+conv_w32,2,carinthia_conv_s2,0.9461582282925168
+conv_w32,3,carinthia_conv_s3,0.9457458588189644
+conv_w36,1,e16_carinthia_conv_w36_s1,0.9436255743926052
+conv_w36,2,e16_carinthia_conv_w36_s2,0.9459102547707738
+conv_w36,3,e16_carinthia_conv_w36_s3,0.944152783101626
+dcnv2_w36,1,e16_carinthia_dcnv2_w36_s1,0.9473626261819504
+dcnv2_w36,2,e16_carinthia_dcnv2_w36_s2,0.945539790402006
+dcnv2_w36,3,e16_carinthia_dcnv2_w36_s3,0.9436803967083471
+dcnv3_w36,1,carinthia_dcnv3_s1,0.9488387968578392
+dcnv3_w36,2,carinthia_dcnv3_s2,0.9484519421439747
+dcnv3_w36,3,carinthia_dcnv3_s3,0.948273842056414
+dcnv4_w36,1,carinthia_dcnv4_s1,0.9469500842695083
+dcnv4_w36,2,carinthia_dcnv4_s2,0.9474991273891167
+dcnv4_w36,3,carinthia_dcnv4_s3,0.9485342943143361

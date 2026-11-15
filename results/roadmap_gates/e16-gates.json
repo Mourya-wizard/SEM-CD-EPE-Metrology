@@ -1,0 +1,69 @@
+{
+ "gates": {
+  "dcnv2_w36": {
+   "G1a_prec_mean_le_0.95x_conv_and_each_seed_below_conv_min": false,
+   "G1b_tmu_not_worse_0.10": true,
+   "G1c_fail_not_worse_0.5pt": true,
+   "G1_pass": false,
+   "G2_dice_mean_ge_conv_plus_0.003_and_every_seed": false
+  },
+  "dcnv3_w36": {
+   "G1a_prec_mean_le_0.95x_conv_and_each_seed_below_conv_min": false,
+   "G1b_tmu_not_worse_0.10": true,
+   "G1c_fail_not_worse_0.5pt": true,
+   "G1_pass": false,
+   "G2_dice_mean_ge_conv_plus_0.003_and_every_seed": true
+  },
+  "dcnv4_w36": {
+   "G1a_prec_mean_le_0.95x_conv_and_each_seed_below_conv_min": false,
+   "G1b_tmu_not_worse_0.10": true,
+   "G1c_fail_not_worse_0.5pt": true,
+   "G1_pass": false,
+   "G2_dice_mean_ge_conv_plus_0.003_and_every_seed": true
+  }
+ },
+ "G0_conv_w32_vs_w36_prec3s_8fr": [
+  [
+   1.3447391986846924,
+   1.325289249420166
+  ],
+  [
+   1.3165737390518188,
+   1.3112874031066895
+  ]
+ ],
+ "real_val_dice_mean": {
+  "conv_w32": 0.9456,
+  "conv_w36": 0.9446,
+  "dcnv2_w36": 0.9455,
+  "dcnv3_w36": 0.9485,
+  "dcnv4_w36": 0.9477
+ },
+ "real_val_dice_by_seed": {
+  "conv_w32": [
+   0.9448,
+   0.9462,
+   0.9457
+  ],
+  "conv_w36": [
+   0.9436,
+   0.9459,
+   0.9442
+  ],
+  "dcnv2_w36": [
+   0.9474,
+   0.9455,
+   0.9437
+  ],
+  "dcnv3_w36": [
+   0.9488,
+   0.9485,
+   0.9483
+  ],
+  "dcnv4_w36": [
+   0.947,
+   0.9475,
+   0.9485
+  ]
+ }
+}

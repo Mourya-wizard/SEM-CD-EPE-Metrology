@@ -213,3 +213,37 @@ the current SEM-only baseline failed on many line/space gauges.
 **Decision rule.** An operator that passes G1 or G2 is carried into the next experiment at width 36. If none passes, the earlier parity was a width effect or a genuine tie,
 and the placement experiment (DCN at the two highest-resolution levels) is run with the best-performing operator on real SEM, DCNv2 breaking ties because its compiled kernel gives the only realistic latency.
 Evaluation: `tools/e16_analysis.py` (results in `results/roadmap_gates/e16-*`).
+
+### E16 results (validation, evaluated 2026-11-15)
+Simulated SEM: SEM-only models, bias-aware registration, 2 seeds; values are the mean with the seed range in brackets. Real SEM: Carinthia-S, 3 seeds, best validation Dice on defect images.
+Files: `results/roadmap_gates/e16-sim-summary.csv`, `e16-real-summary.csv`, `e16-gates.json`.
+
+| Model (width) | Params | CD prec. 3σ, 8 fr (nm) | CD prec. 3σ, 2 fr (nm) | CD TMU, 8 fr (nm) | CD failure, 8 fr | Stress RMSE, 8 fr (nm) | Carinthia val Dice |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Conv (32) | 5.60 M | 1.335 [1.325, 1.345] | 2.449 [2.391, 2.506] | 5.99 | 1.7% | 2.33 | 0.9456 |
+| Conv (36) | 7.09 M | 1.314 [1.311, 1.317] | 2.378 [2.372, 2.385] | 5.98 | 1.8% | 2.25 | 0.9446 |
+| DCNv2 (36) | 7.37 M | 1.283 [1.264, 1.303] | 2.344 [2.325, 2.362] | 5.98 | 1.8% | 2.38 | 0.9455 |
+| DCNv3 (36) | 5.56 M | 1.272 [1.264, 1.281] | 2.347 [2.325, 2.370] | 5.98 | 1.7% | 2.23 | **0.9485** |
+| DCNv4 (36) | 5.55 M | **1.270** [1.257, 1.284] | 2.341 [2.292, 2.390] | 5.96 | 1.8% | 2.40 | 0.9477 |
+
+Carinthia values per seed: conv-32 0.9448 / 0.9462 / 0.9457; conv-36 0.9436 / 0.9459 / 0.9442; DCNv2-36 0.9474 / 0.9455 / 0.9437; DCNv3 0.9488 / 0.9485 / 0.9483; DCNv4 0.9470 / 0.9475 / 0.9485.
+DCNv3 and conv-32 use the published runs for seeds 2–3 (their checkpoints no longer exist); seed 1 of each was retrained.
+
+**Gates as pre-registered.**
+- **G0 (width alone, conv-32 → conv-36):** precision at 8 frames 1.335 → 1.314 nm (−1.6%); Carinthia Dice 0.9456 → 0.9446 (no gain). Width helps the simulated precision slightly and the real-SEM Dice not at all.
+- **G1 (simulated advantage over conv-36): failed for all three operators.** Precision at 8 frames improves by 2.3% (DCNv2), 3.2% (DCNv3) and 3.3% (DCNv4), below the 5% requirement.
+  Each DCN seed is below the smaller conv-36 seed, so the direction is consistent, but the effect is small. TMU-style and failure rate are unchanged (G1b and G1c hold).
+- **G2 (real-SEM advantage): passed by DCNv3 (+0.0039) and DCNv4 (+0.0031), failed by DCNv2 (+0.0009).** DCNv3 and DCNv4 are higher than conv-36 on every seed.
+
+**Observations (not gated).**
+- At equal width the parameter-matching explanation does not hold: DCNv3 and DCNv4 beat conv-36 on real SEM with 22% fewer parameters (5.5 M vs 7.1 M), and conv-36 does no better than conv-32.
+- The simulated gain is about 3% of precision, the same size as the effect of width alone for conv (1.6%), and CD TMU-style stays at 5.96–5.99 nm for every model, as E13 predicted for an edge-offset-limited metric.
+- Stress-contrast RMSE does not rank the operators consistently (2.23–2.40 nm, seed ranges overlap).
+- **Line/space roughness:** the failure of the retrained SEM-only DCNv3 baseline on line/space gauges (E14 caveat) is specific to seed 1 (38.9% failed, +56% LER bias); seed 2 has 0% failures. All other 8 models have 0–0.7% failures.
+  The earlier E14 comparison therefore used an unstable baseline checkpoint, not a general DCNv3 property.
+  Signed LER bias at 64 frames (σ = 1 and 2 nm): conv-32 −4.2 / −4.0%, conv-36 −0.6 / −2.2%, DCNv2 −5.2 / −3.6%, DCNv3 (seed 2) −5.6%, DCNv4 −5.0 / −2.9%.
+  Conv at width 36 under-reports roughness least; the DCN models are near the earlier −5%.
+- Inference latency was not re-measured at equal width. The earlier batch-1 timings (SEM + CAD models, PyTorch paths for DCNv3 and DCNv4) are conv 4.76 ms, DCNv2 6.31 ms, DCNv3 11.88 ms, DCNv4 11.42 ms.
+
+**Decision.** No operator is adopted on simulated precision (G1 failed). DCNv3 and DCNv4 show a consistent real-SEM Dice gain (G2 passed) and a small, consistent precision gain,
+so both are carried into the placement experiment at width 36. DCNv2 is not (G2 failed, and its precision gain is the smallest).
