@@ -304,6 +304,16 @@ Planned in [docs/ROADMAP.md](docs/ROADMAP.md) as a chain: each experiment change
 - With CAD input the deepest block attends to feature interiors far less (2.9% vs 29.1% of CAM mass); the CAD channel carries 3.9% of input attribution. E13/E14 did not change where the final layers look.
 - Grad-CAM shows where the network reads, not causal importance; attribution statistics are means over test tiles of MetalSet/ViaSet (see `results/gradcam/*_stats*.csv`).
 
+### Architecture diagrams
+
+Block-level diagrams of all four variants (every block with its output size for a 512x512 input, skip connections, the five operator positions and the three Grad-CAM layers) are in [results/architecture/](results/architecture/): `unet_conv`, `unet_dcnv2`, `unet_dcnv3`, `unet_dcnv4` (PNG and SVG) and `operator_blocks` (the inside of each operator block). Sizes and parameter counts are read from the real models by `tools/make_architecture_diagrams.py`.
+
+<div align="center">
+
+![DCNv3 U-Net](results/architecture/unet_dcnv3.png)
+
+</div>
+
 ---
 
 ## 8 · Reproduce
@@ -387,7 +397,7 @@ sem-cd-epe-metrology/
 │   └── plots.py             # figures from saved results
 ├── cuda/                    # C++/OpenMP + CUDA kernels, pybind11 binding, CMake, build.bat
 ├── benchmarks/              # kernel parity + runtime benchmark
-├── tools/                   # GPU job queue, concurrency pilot, operator table, dashboard, Grad-CAM (make_gradcam), roadmap gates
+├── tools/                   # GPU job queue, concurrency pilot, operator table, dashboard, Grad-CAM (make_gradcam), architecture diagrams, roadmap gates
 ├── configs/                 # default.yaml (all parameters) + per-run configs
 ├── tests/                   # 47 tests: truth, registration, operators, kernel, Carinthia
 ├── third_party/             # vendored DCNv3 PyTorch operator (MIT) + DCNv4 license
