@@ -1,0 +1,4 @@
+name: e16_carinthia_dcnv2_w36_s1
+op: dcnv2
+seed: 1
+width: 36

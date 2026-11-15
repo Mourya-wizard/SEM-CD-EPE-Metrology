@@ -82,12 +82,12 @@ def n_params(m):
     return sum(p.numel() for p in m.parameters() if p.requires_grad)
 
 
-def build_model(mc, op, in_ch, aux_offset=False):
+def build_model(mc, op, in_ch, aux_offset=False, width=None):
     """mc = cfg['model']; width per operator from mc['width'][op] (documented param matching)."""
-    return UNet(in_ch=in_ch, width=mc["width"][op], op=op, aux_offset=aux_offset)
+    return UNet(in_ch=in_ch, width=width or mc["width"][op], op=op, aux_offset=aux_offset)
 
 
 def build_for_run(mc, run):
     """Model matching a run yaml / checkpoint 'run' dict (CAD channel, optional E13 auxiliary head)."""
     aux = float(run.get("train", {}).get("aux_offset_weight", 0)) > 0
-    return build_model(mc, run["op"], 2 if run["cad"] else 1, aux)
+    return build_model(mc, run["op"], 2 if run["cad"] else 1, aux, run.get("width"))

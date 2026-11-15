@@ -1,0 +1,5 @@
+name: e16_conv_w36_semonly_s2
+op: conv
+cad: false
+seed: 2
+width: 36

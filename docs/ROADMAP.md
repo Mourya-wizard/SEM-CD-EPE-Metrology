@@ -187,3 +187,29 @@ Files: `results/gradcam/`. Scalar = sum of predicted CD-gauge edge offsets; "ins
   than elsewhere, DCNv4 1.0×, DCNv2 0.9×.
 - **CAD vs SEM-only:** with CAD input the deepest block's CAM is 2.9% inside features vs 29.1% for SEM-only (far background 41% vs 16%); the CAD channel carries 3.9% of input attribution.
 - **Stages (baseline, +E13, +E14):** final-layer CAMs are nearly identical (CAM within 4 px of edges 0.6% for all three); neither change altered where the model looks.
+
+## 11. E16: equal-width operator comparison (pre-registered 2026-11-15, before any E16 run)
+**Question.** Does deformable sampling beat a regular convolution at the same channel width? Earlier comparisons matched the parameter count
+(about 5.6 M), which gave DCNv3 and DCNv4 a base width of 36 and conv and DCNv2 a base width of 32. Here every operator runs at the same width.
+
+**Design (SEM-only input, E12 bias-aware registration for all evaluations).**
+- Width 36 for all four operators. At width 36 the parameter counts are conv 7.09 M, DCNv2 7.37 M, DCNv3 5.56 M and DCNv4 5.55 M, so conv carries 27% more
+  parameters than DCNv3, and a DCN advantage cannot be explained by capacity. A conv control at width 32 (5.60 M, the earlier setting) isolates the effect of width alone.
+- Simulated SEM: 2 seeds per model (conv-32, conv-36, DCNv2-36, DCNv3-36, DCNv4-36), same recipe (6000 iterations, batch 12). DCNv3-36 seed 1 is the existing baseline run.
+- Real SEM (Carinthia-S): 3 seeds for conv-36 and DCNv2-36 (new), DCNv4 seeds 2–3 (default width is already 36); DCNv3 (width 36) and conv-32 use their existing runs.
+- Per-run `width:` override in the run yaml (`models.build_for_run`, `train.py`, `carinthia.py`); nothing else in the recipe changes.
+
+**Why these metrics.** E13 showed that the CD TMU-style floor is a per-image edge offset that no network recovers, so TMU-style is only a "not worse" check.
+Precision at low dose, failure rate and Carinthia Dice are where an operator can still differ. Line/space failure rate and LER bias (E14) are recorded because
+the current SEM-only baseline failed on many line/space gauges.
+
+**Gates (validation only; the test set is not used in E16).**
+- **G0 (informational):** conv-32 vs conv-36, CD precision 3σ at 8 frames. Tells whether width alone changes anything.
+- **G1 (simulated advantage of an operator over conv-36):** all of (a) mean CD precision at 8 frames ≤ 0.95 × the conv-36 mean and below the smaller conv-36 seed on both seeds;
+  (b) CD TMU-style (8 frames) not worse by more than 0.10 nm; (c) CD failure rate (8 frames) not worse by more than 0.5 points.
+- **G2 (real-SEM advantage):** mean validation Dice ≥ conv-36 mean + 0.003 and higher than conv-36 on every seed (paired by seed).
+- **Also recorded, not gated:** precision at 2 frames, stress-contrast RMSE, line/space failure rate and signed LER bias at 64 frames, inference latency, learned-offset statistics.
+
+**Decision rule.** An operator that passes G1 or G2 is carried into the next experiment at width 36. If none passes, the earlier parity was a width effect or a genuine tie,
+and the placement experiment (DCN at the two highest-resolution levels) is run with the best-performing operator on real SEM, DCNv2 breaking ties because its compiled kernel gives the only realistic latency.
+Evaluation: `tools/e16_analysis.py` (results in `results/roadmap_gates/e16-*`).

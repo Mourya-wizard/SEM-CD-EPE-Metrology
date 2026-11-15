@@ -241,7 +241,7 @@ def train(run_path, pilot_iters=None):
     gen = torch.Generator(device=device).manual_seed(run["seed"] * 1000 + it0)
     bank = Bank(cfg)
     info = dict(name=run["name"], op=run["op"], cad=run["cad"], seed=run["seed"], params=n_params(model),
-                width=cfg["model"]["width"][run["op"]])
+                width=run.get("width") or cfg["model"]["width"][run["op"]])
     _atomic_json(status_p, dict(info, state="running", iter=it0, iters=iters, best=best, pid=os.getpid()))
     t_last, n_img, t_data, t_step = time.time(), 0, 0.0, 0.0
     torch.cuda.reset_peak_memory_stats()

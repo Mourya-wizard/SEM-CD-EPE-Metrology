@@ -1,0 +1,5 @@
+name: e16_dcnv2_w36_semonly_s1
+op: dcnv2
+cad: false
+seed: 1
+width: 36

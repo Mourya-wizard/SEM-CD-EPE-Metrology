@@ -186,7 +186,7 @@ def train(cfg, run_path):
     H, W = D["train"][0].shape[-2:]
     valid = valid_region((H, W), border)
     V = torch.from_numpy(valid)[None, None].float().to(dev)
-    model = UNet(in_ch=1, width=cfg["model"]["width"][op], op=op).to(dev)
+    model = UNet(in_ch=1, width=run.get("width") or cfg["model"]["width"][op], op=op).to(dev)
     opt = torch.optim.AdamW(model.parameters(), lr=tc["lr"], weight_decay=tc["weight_decay"])
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(1.0, (i + 1) / tc["warmup"]) * 0.5 * (
         1 + np.cos(np.pi * min(i, tc["iters"]) / tc["iters"])))
