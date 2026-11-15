@@ -306,7 +306,7 @@ Planned in [docs/ROADMAP.md](docs/ROADMAP.md) as a chain: each experiment change
 
 ### Architecture diagrams
 
-Block-level diagrams of all four variants (every block with its output size for a 512x512 input, skip connections, the five operator positions and the three Grad-CAM layers) are in [results/architecture/](results/architecture/): `unet_conv`, `unet_dcnv2`, `unet_dcnv3`, `unet_dcnv4` (PNG and SVG) and `operator_blocks` (the inside of each operator block). Sizes and parameter counts are read from the real models by `tools/make_architecture_diagrams.py`.
+Block-level diagrams of all four variants (every block with its output size for a 512x512 input, skip connections, the five operator positions and the three Grad-CAM layers) are in [results/architecture/](results/architecture/): `unet_conv`, `unet_dcnv2`, `unet_dcnv3`, `unet_dcnv4` (PNG, SVG and PDF; one drawing routine, so layout and symbols are identical and only the operator colour changes) and `operator_blocks` (the inside of each operator block). `layer_tables.md` lists every block with its output shape and parameter count. Sizes and parameter counts are read from the real models by `tools/make_architecture_diagrams.py`.
 
 <div align="center">
 
