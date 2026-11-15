@@ -142,3 +142,48 @@ Validation set, SEM-only DCNv3 baseline (seed 1), dose 8 frames, unless stated o
   total, which corresponds to a CD 3σ of about 1.7 nm instead of 5.6 nm (derived from the decomposition, not measured with a model). In a real
   recipe the edge-model offset is calibrated against reference metrology (for example cross-section TEM or AFM); this simulation randomises it per image
   on purpose, so the TMU-style floor here is the cost of an uncalibrated edge model.
+
+### E14: roughness spectrum loss (gates evaluated 2026-11-15)
+| Validation, SEM-only DCNv3, line/space set, 64 frames | Baseline | + spectrum loss (0.05) |
+|---|:--:|:--:|
+| Mean abs. LER bias, σ = 1 and 2 nm (gate metric) | 70.6% (invalid, see below) | **4.6%** |
+| Signed LER bias, σ = 1 nm (mean over repeats) | n/a | −4.7% |
+| CD TMU-style, bias-aware registration (nm) | 6.015 | 5.950 |
+| CD precision, 8 frames (nm, 3σ) | 1.264 | 1.265 |
+
+- **Gate 1** (|LER bias| ≤ 2.5%): 4.6%, **failed**. **Gate 2** (TMU not worse by more than 0.10 nm) and **Gate 3** (precision ≤ 1.10×): passed.
+- **Decision:** not adopted under the pre-registered rule; the recipe stays the baseline.
+- **Caveat on the baseline number.** The retrained SEM-only baseline produced a failed measurement on 38–69% of the line/space gauges (E14 model: 0–0.2%), so
+  its 70.6% LER bias is not a roughness measurement and the gate comparison against it is not informative. The meaningful reference is the earlier
+  CAD-input models on the same set (−5.7% for DCNv3 and −4.9% for U-Net at 64 frames, σ = 1 nm). Against that reference the spectrum loss moves the
+  bias only from about −5% to about −4.7% at 64 frames, i.e. it does **not** close the gap, which agrees with the gate decision. At 2 frames the E14 model over-reports (+31%, noise).
+  Why the SEM-only baseline fails on this set was not investigated (the other SEM-only checkpoint, E14, does not).
+- **Interpretation:** a log-spectrum proxy on the TSDF band does not make the learned contour recover the true roughness amplitude. The calibrated
+  LER correction factor from E7 remains the way to report roughness with these models.
+
+## 9. Final stage (decided 2026-11-15)
+No new recipe was adopted beyond E12 (an evaluation-time change): E13 and E14 failed their gates, so there are no extra training seeds to run.
+
+| Stage (SEM-only DCNv3, seed 1, test set, dose 8) | CD TMU-style (nm) | CD failure in / out of range | EPE TMU-style (nm) | EPE slope |
+|---|:--:|:--:|:--:|:--:|
+| Baseline, CAD-template registration | 6.32 | 4.6% / 46.9% | 8.33 | 0.862 |
+| + E12 bias-aware registration | 5.56 | 1.0% / 2.1% | 5.15 | 0.953 |
+| + E13 offset head | not adopted (R² −0.008) | | | |
+| + E14 spectrum loss | not adopted (LER bias 4.6% vs gate 2.5%) | | | |
+| Classical tracer, CAD → bias-aware registration | 6.73 → 6.12 | 6.8% / 47.6% → 2.5% / 4.0% | 8.17 → 5.25 | 0.850 → 0.951 |
+
+Single seed (1); no seed range is available for E12, which was evaluated on one retrained model and on the classical tracer. With
+bias-aware registration the learned and classical EPE agree (5.15 vs 5.25 nm), so the earlier EPE gap was registration, not the edge model.
+The learned model's advantage that remains is precision (0.44 vs 0.89 nm 3σ at 64 frames).
+
+## 10. E11 results: Grad-CAM at each stage (2026-11-15)
+Files: `results/gradcam/`. Scalar = sum of predicted CD-gauge edge offsets; "inside features" = CAM mass inside printed shapes (area share 10.9%).
+- **Operators (SEM + CAD, simulated):** at the last deformable block and final decoder layer all four operators put ~50% of CAM mass inside
+  features (4.6× chance) and none in the far background. The deepest block differs: U-Net 5% and DCNv2 21% inside features, DCNv3 3% and DCNv4 1%
+  with 41% / 26% in the far background, i.e. the coarse deepest block of the DCN models carries a large background (context) component.
+- **DCN learned offsets (last deformable block, input px):** DCNv3 3.7 near / 3.0 far from edges, DCNv2 6.0 / 7.2, DCNv4 5.1 / 7.6. Offsets are not
+  concentrated at edges, so there is no sign in these maps that deformable sampling is edge-adaptive here, consistent with the null result of E4/E5.
+- **Real SEM (Carinthia-S):** CAM lies in the defect for 91–97% of its mass for all operators; the DCNv3 offset is 1.4× larger near the defect boundary
+  than elsewhere, DCNv4 1.0×, DCNv2 0.9×.
+- **CAD vs SEM-only:** with CAD input the deepest block's CAM is 2.9% inside features vs 29.1% for SEM-only (far background 41% vs 16%); the CAD channel carries 3.9% of input attribution.
+- **Stages (baseline, +E13, +E14):** final-layer CAMs are nearly identical (CAM within 4 px of edges 0.6% for all three); neither change altered where the model looks.

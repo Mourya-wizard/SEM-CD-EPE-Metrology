@@ -268,6 +268,44 @@ Confidence = seed spread across the 3 DCNv3 models + edge-profile quality. Spear
 
 ---
 
+## 7b · Roadmap v2: explainability and error-floor experiments (E11–E14)
+
+Planned in [docs/ROADMAP.md](docs/ROADMAP.md) as a chain: each experiment changes one component, has gates written down before the run, and its decision is the starting point of the next. Validation decides; the test set is evaluated once per frozen configuration.
+
+| # | Change | Why (from earlier results) | Outcome |
+|:-:|---|---|---|
+| **E11** | Grad-CAM and DCN offset maps at each stage | E4/E5: DCN shows no gain; E6: CAD lowers slope | Maps in `results/gradcam/`; see below |
+| **E12** | Bias-aware registration (joint shift + edge-bias search) | E2/E5: EPE dominated by registration failing outside the process window | **Adopted** (all key gates passed except the PSR flag): test EPE TMU-style 8.3 → 5.2 nm, out-of-range CD failure 47% → 2% |
+| **E13** | Auxiliary per-image edge-offset head | CD floor is a per-image offset (91% of variance, r = −0.98 with bloom offset) | **Not adopted:** offset not recoverable from the image (R² −0.008), TMU unchanged |
+| **E14** | Roughness spectrum loss (weight 0.05) | E7: learned models under-report LER by ~5% | **Not adopted:** LER bias 4.6% vs the 2.5% gate; no meaningful change from the CAD models' −5% |
+
+**Test set, SEM-only DCNv3, dose 8 (one seed):** CAD-template → bias-aware registration. Learned: CD TMU-style 6.32 → 5.56 nm, EPE TMU-style 8.33 → 5.15 nm, EPE slope 0.862 → 0.953. Classical tracer: 6.73 → 6.12 nm and 8.17 → 5.25 nm. With bias-aware registration the learned and classical EPE agree, so the earlier EPE gap came from registration. The learned models keep their precision advantage (0.44 vs 0.89 nm 3σ at 64 frames). Numbers: `results/roadmap_v2/`, `results/registration_e12/`, `results/roadmap_gates/`.
+
+### E11 · Grad-CAM (scalar = predicted CD for metrology, defect logits for Carinthia-S)
+
+<div align="center">
+
+![Grad-CAM operators](results/gradcam/operators_sim_MetalSet.png)
+
+<sub>Simulated SEM (8 frames), SEM + CAD models. Columns: deepest deformable block, last deformable block, final decoder layer; right: learned DCN offset magnitude (feature px). White = true contour.</sub>
+
+![Grad-CAM Carinthia-S](results/gradcam/carinthia_scratch.png)
+
+<sub>Real SEM defect segmentation (scratch): CAM of each operator.</sub>
+
+![CAD vs SEM-only](results/gradcam/cad_vs_sem_MetalSet.png)
+
+<sub>DCNv3 with and without CAD input.</sub>
+
+</div>
+
+- At the last deformable block and the final layer all operators attend to feature interiors (~50% of CAM mass inside printed shapes that cover 11% of the area); the deepest block of the DCN models carries a large background-context component (DCNv3 41%, DCNv4 26% far from any edge, U-Net 35%).
+- DCN offsets are **not** concentrated at edges (DCNv3 3.7 px near vs 3.0 px far, DCNv2 6.0 vs 7.2, DCNv4 5.1 vs 7.6), which fits the lack of a metrology gain. On real defects the CAM lies in the defect for 91–97% of its mass, and DCNv3's offsets are 1.4× larger at the defect boundary.
+- With CAD input the deepest block attends to feature interiors far less (2.9% vs 29.1% of CAM mass); the CAD channel carries 3.9% of input attribution. E13/E14 did not change where the final layers look.
+- Grad-CAM shows where the network reads, not causal importance; attribution statistics are means over test tiles of MetalSet/ViaSet (see `results/gradcam/*_stats*.csv`).
+
+---
+
 ## 8 · Reproduce
 
 ```bash
@@ -335,7 +373,8 @@ sem-cd-epe-metrology/
 ├── src/
 │   ├── data_lithobench.py   # LithoBench I/O, tile-level splits
 │   ├── sem_sim.py           # exact truth field + SEM forward model (GPU)
-│   ├── registration.py      # CAD template + FFT registration
+│   ├── registration.py      # CAD template + FFT registration, bias-aware variant (E12)
+│   ├── explain.py           # Grad-CAM, DCN offset maps, attribution (E11)
 │   ├── gauges.py            # CD / EPE / contact gauges, GDS export
 │   ├── classical.py         # classical edge measurement + shared 1D refinement
 │   ├── operators.py         # Conv / DCNv2 / DCNv3 / DCNv4 blocks
@@ -348,9 +387,9 @@ sem-cd-epe-metrology/
 │   └── plots.py             # figures from saved results
 ├── cuda/                    # C++/OpenMP + CUDA kernels, pybind11 binding, CMake, build.bat
 ├── benchmarks/              # kernel parity + runtime benchmark
-├── tools/                   # GPU job queue, concurrency pilot, operator table, dashboard
+├── tools/                   # GPU job queue, concurrency pilot, operator table, dashboard, Grad-CAM (make_gradcam), roadmap gates
 ├── configs/                 # default.yaml (all parameters) + per-run configs
-├── tests/                   # 45 tests: truth, registration, operators, kernel, Carinthia
+├── tests/                   # 47 tests: truth, registration, operators, kernel, Carinthia
 ├── third_party/             # vendored DCNv3 PyTorch operator (MIT) + DCNv4 license
 ├── results/                 # every table and figure quoted in this README
 └── docs/                    # architecture, full results, limitations, metrology Q&A

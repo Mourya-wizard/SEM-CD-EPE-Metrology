@@ -1,0 +1,22 @@
+{
+ "base": "cadtest_dcnv3_semonly_s1",
+ "new": "e14_dcnv3_semonly_spec_s1",
+ "abs_ler_bias_pct_64fr": [
+  70.63458925724817,
+  4.6147126333867705
+ ],
+ "cd_tmu3s": [
+  6.015025288209891,
+  5.950304104117161
+ ],
+ "cd_prec3s_8fr": [
+  1.2636797428131104,
+  1.2650394439697266
+ ],
+ "gates": {
+  "G1_ler_bias_le_2.5pct": false,
+  "G2_tmu_not_worse_0.10": true,
+  "G3_precision_le_1.10x": true
+ },
+ "adopt_spectrum_loss": false
+}
