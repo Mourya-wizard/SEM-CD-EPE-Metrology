@@ -26,7 +26,7 @@ from models import build_model, n_params  # noqa: E402
 from operators import make_op  # noqa: E402
 
 OUT = os.path.join(ROOT, "results", "architecture")
-plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "svg.fonttype": "none", "pdf.fonttype": 42,
+plt.rcParams.update({"font.family": "serif", "font.serif": ["Times New Roman", "STIXGeneral"], "mathtext.fontset": "stix", "svg.fonttype": "path", "pdf.fonttype": 42,
                      "axes.unicode_minus": False})
 
 NAMES = {"conv": "regular convolution", "dcnv2": "DCNv2", "dcnv3": "DCNv3", "dcnv4": "DCNv4 (PyTorch reimplementation)"}
@@ -120,17 +120,17 @@ def unet_figure(cfg, op):
         dict(name="in", gap=0.0, arrow=None, slabs=[slab("In", "in", c=1, S=size, ctext="1 (+1)")]),
         dict(name="e0", gap=0.55, arrow="", slabs=[slab("CB", "conv", "stem"), slab("CB", "conv", "enc0", skip=0)]),
         dict(name="e1", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc1", skip=1)]),
-        dict(name="e2", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc2"), slab("OB", "op", "encop2", skip=2)]),
-        dict(name="e3", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc3"), slab("OB", "op", "encop3", skip=3)]),
-        dict(name="b", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "midconv"), slab("OB", "op", "midop", gc="mid")]),
+        dict(name="e2", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc2"), slab("OB", "op", "encop2", skip=2, gc="enc 1/4")]),
+        dict(name="e3", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "enc3"), slab("OB", "op", "encop3", skip=3, gc="enc 1/8")]),
+        dict(name="b", gap=1.4, arrow="3×3 conv\nstride 2", slabs=[slab("CB", "conv", "midconv"), slab("OB", "op", "midop", gc="bottleneck 1/16")]),
         dict(name="d0", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec0", cu=C("midop"), cs=C("encop3"), skip=3, ckey="dec0"),
-                                                              slab("CB", "conv", "dec0"), slab("OB", "op", "decop0")]),
+                                                              slab("CB", "conv", "dec0"), slab("OB", "op", "decop0", gc="dec 1/8")]),
         dict(name="d1", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec1", cu=C("decop0"), cs=C("encop2"), skip=2),
-                                                              slab("CB", "conv", "dec1"), slab("OB", "op", "decop1", gc="dec_op1")]),
+                                                              slab("CB", "conv", "dec1"), slab("OB", "op", "decop1", gc="dec 1/4")]),
         dict(name="d2", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec2", cu=C("decop1"), cs=C("enc1"), skip=1),
                                                               slab("CB", "conv", "dec2")]),
         dict(name="d3", gap=1.4, arrow="bilinear\n×2", slabs=[slab("Cat", "cat", "dec3", cu=C("dec2"), cs=C("enc0"), skip=0),
-                                                              slab("CB", "conv", "dec3", gc="last")]),
+                                                              slab("CB", "conv", "dec3", gc="last 1/1")]),
         dict(name="h", gap=1.4, arrow="conv 1×1", slabs=[slab("Head", "head", "head")]),
     ]
     # channel text / width / concat sizes
@@ -148,8 +148,8 @@ def unet_figure(cfg, op):
         for s in st["slabs"]:
             s["x"], s["w"], s["h"] = x, slab_w(s["cw"]), slab_h(s["S"])
             s["cx"] = x + s["w"] / 2
-            x += s["w"] + 0.10
-        x -= 0.10
+            x += s["w"] + 0.34
+        x -= 0.34
         st["x0"], st["x1"] = st["slabs"][0]["x"], x
     xend = x
 
@@ -170,8 +170,8 @@ def unet_figure(cfg, op):
     for L in range(5):
         Sx = size // 2 ** L
         ax.plot([xmin + 0.9, xend + 0.4], [-L * DY] * 2, color="#c8c8c8", lw=0.6, ls=(0, (1, 3)), zorder=0)
-        ax.text(xmin + 0.8, -L * DY + 0.1, f"{Sx}×{Sx}", ha="right", va="bottom", fontsize=8.5)
-        ax.text(xmin + 0.8, -L * DY - 0.1, f"(1/{2 ** L})", ha="right", va="top", fontsize=7.5, color=GREY)
+        ax.text(xmin + 0.8, -L * DY + 0.1, f"{Sx}×{Sx}", ha="right", va="bottom", fontsize=12.8)
+        ax.text(xmin + 0.8, -L * DY - 0.1, f"(1/{2 ** L})", ha="right", va="top", fontsize=11.2, color=GREY)
 
     # slabs
     for st in stages:
@@ -185,11 +185,11 @@ def unet_figure(cfg, op):
             else:
                 fc = {"in": INP, "conv": CB, "op": oc, "head": HEAD}[s["kind"]]
                 ax.add_patch(Rectangle((x0, y0 - hh / 2), ww, hh, fc=fc, ec=INK, lw=1.2 if s["kind"] == "op" else 0.9, zorder=2))
-            ax.text(s["cx"], s["cy_top"] + 0.17, s["ctext"], ha="center", va="center", fontsize=8)
-            ax.text(s["cx"], s["cy_bot"] - 0.2, s["lab"], ha="center", va="center", fontsize=8.5, weight="bold" if s["kind"] == "op" else "normal")
+            ax.text(s["cx"], s["cy_top"] + 0.17, s["ctext"], ha="center", va="center", fontsize=12.0)
+            ax.text(s["cx"], s["cy_bot"] - 0.2, s["lab"], ha="center", va="center", fontsize=12.8, weight="bold" if s["kind"] == "op" else "normal")
             if s.get("gc"):
                 ax.add_patch(Rectangle((x0 - 0.05, y0 - hh / 2 - 0.05), ww + 0.10, hh + 0.10, fc="none", ec=RED, lw=1.8, ls=(0, (3, 1.6)), zorder=4))
-                ax.text(s["cx"], s["cy_bot"] - 0.5, f"▲ {s['gc']}", ha="center", va="center", fontsize=7.5, color=RED)
+                ax.text(s["cx"], s["cy_bot"] - 0.5, f"▲ {s['gc']}", ha="center", va="center", fontsize=11.2, color=RED)
 
     # arrows between stages: down = conv 3x3 stride 2 (black), up = bilinear x2 (blue), flat = in / head
     for k in range(1, len(stages)):
@@ -197,7 +197,7 @@ def unet_figure(cfg, op):
         if nm in ("e0", "h"):
             arrow(ax, [(a["x"] + a["w"], a["yc"]), (b["x"], b["yc"])])
             if nm == "h":
-                ax.text((a["x"] + a["w"] + b["x"]) / 2, a["yc"] + 0.12, "1×1", ha="center", va="bottom", fontsize=7.5)
+                ax.text((a["x"] + a["w"] + b["x"]) / 2, a["yc"] + 0.12, "1×1", ha="center", va="bottom", fontsize=11.2)
         elif nm in ("e1", "e2", "e3", "b"):
             arrow(ax, [(a["x"] + a["w"], a["yc"] - 0.36 * a["h"]), (b["x"], b["yc"] + 0.0)])
         else:
@@ -209,11 +209,13 @@ def unet_figure(cfg, op):
     for k in range(4):
         a, b = src[k], dst[k]
         arrow(ax, [(a["x"] + a["w"], a["yc"]), (b["x"], b["yc"])], color=RED, lw=1.1, ls=(0, (4, 2)), ms=8)
-        ax.text((a["x"] + a["w"] + b["x"]) / 2, a["yc"] + 0.07, f"skip {k}: concat", ha="center", va="bottom", fontsize=8, color=RED, style="italic")
+        ax.text((a["x"] + a["w"] + b["x"]) / 2, a["yc"] + 0.07, f"skip {k}: concat", ha="center", va="bottom", fontsize=12.0, color=RED, style="italic")
 
-    ax.text(0.0, 1.62, "Encoder", fontsize=9.5, style="italic", ha="left", va="center")
-    ax.text(xend, 1.62, "Decoder", fontsize=9.5, style="italic", ha="right", va="center")
-    ax.text((src[3]["x"] + dst[3]["x"]) / 2 + 0.0, -4 * DY - 1.15, "Bottleneck", fontsize=9.5, style="italic", ha="center", va="center")
+    ax.text(xend / 2, 1.6, "Only the five OB (operator) blocks differ between Conv, DCNv2, DCNv3 and DCNv4; all other layers are identical.",
+            ha="center", va="center", fontsize=13.5, color=INK, bbox=dict(boxstyle="round,pad=0.45", fc="#fff8e6", ec="#d9a400", lw=1.2), zorder=5)
+    ax.text(0.0, 1.62, "Encoder", fontsize=14.2, style="italic", ha="left", va="center")
+    ax.text(xend, 1.62, "Decoder", fontsize=14.2, style="italic", ha="right", va="center")
+    ax.text((src[3]["x"] + dst[3]["x"]) / 2 + 0.0, -4 * DY - 1.15, "Bottleneck", fontsize=14.2, style="italic", ha="center", va="center")
 
     # legend (two rows)
     lx, ly = xmin + 0.1, -4 * DY - 1.75
@@ -225,18 +227,18 @@ def unet_figure(cfg, op):
     cx = lx
     for txt, fc, sp in (("CB  ConvBlock: 3×3 conv, GroupNorm, GELU", CB, None), (f"OB  Operator block ({SHORT[op]}): x + Op(GELU(GN(x)))", oc, None),
                         ("Cat  Concat: upsampled | skip", None, "cat"), ("1×1 conv → TSDF head", HEAD, None)):
-        swatch(cx, ly, fc, sp); ax.text(cx + 0.42, ly, txt, va="center", fontsize=8); cx += 0.42 + 0.108 * len(txt) + 0.5
+        swatch(cx, ly, fc, sp); ax.text(cx + 0.42, ly, txt, va="center", fontsize=12.0); cx += 0.42 + 0.165 * len(txt) + 0.5
     cx = lx; ly2 = ly - 0.5
     for col, ls_, txt in ((INK, "-", "3×3 conv, stride 2"), (BLUE, "-", "bilinear ×2"), (RED, (0, (4, 2)), "skip connection (channel concat)")):
         arrow(ax, [(cx, ly2), (cx + 0.7, ly2)], color=col, ls=ls_, ms=8)
-        ax.text(cx + 0.85, ly2, txt, va="center", fontsize=8); cx += 0.85 + 0.108 * len(txt) + 0.5
+        ax.text(cx + 0.85, ly2, txt, va="center", fontsize=12.0); cx += 0.85 + 0.165 * len(txt) + 0.5
     ax.add_patch(Rectangle((cx, ly2 - 0.14), 0.3, 0.28, fc="none", ec=RED, lw=1.6, ls=(0, (3, 1.6))))
-    ax.text(cx + 0.42, ly2, "Grad-CAM layer (E11)", va="center", fontsize=8, color=RED)
+    ax.text(cx + 0.42, ly2, "Grad-CAM layer (E11): one column of every Grad-CAM figure", va="center", fontsize=12.0, color=RED)
     ax.text(lx, ly2 - 0.5, f"Slab height ~ log resolution, width ~ channels (numbers above slabs). Input 1 channel (SEM) or 2 channels (SEM + CAD); output: 1-channel TSDF at {size}×{size}.",
-            fontsize=7.5, color=GREY, va="center")
+            fontsize=11.2, color=GREY, va="center")
     ax.text(xmin + 0.1, ymax - 0.05,
             f"{NAMES[op][0].upper() + NAMES[op][1:]} U-Net   ·   $w$ = {w}   ·   {n_params(m1) / 1e6:.2f} M parameters (SEM-only), {n_params(m2) / 1e6:.2f} M (SEM + CAD)",
-            fontsize=11.5, weight="bold", va="top")
+            fontsize=17.2, weight="bold", va="top")
     for ext, kw in (("png", dict(dpi=300)), ("svg", {}), ("pdf", {})):
         fig.savefig(os.path.join(OUT, f"unet_{op}.{ext}"), bbox_inches="tight", facecolor="white", **kw)
     plt.close(fig)
@@ -248,7 +250,7 @@ def unet_figure(cfg, op):
 # ----------------------------------------------------------------------------------------------------------------------
 # Operator-block figure
 # ----------------------------------------------------------------------------------------------------------------------
-def node(ax, cx, cy, w, h, text, fc="#ffffff", bold=False, fs=8.6):
+def node(ax, cx, cy, w, h, text, fc="#ffffff", bold=False, fs=12.5):
     ax.add_patch(FancyBboxPatch((cx - w / 2, cy - h / 2), w, h, boxstyle="round,pad=0,rounding_size=0.18", fc=fc, ec=INK, lw=1.0, zorder=2))
     ax.text(cx, cy, text, ha="center", va="center", fontsize=fs, weight="bold" if bold else "normal", zorder=3, linespacing=1.15)
     return dict(t=(cx, cy + h / 2), b=(cx, cy - h / 2), l=(cx - w / 2, cy), r=(cx + w / 2, cy), cx=cx, cy=cy, w=w, h=h)
@@ -260,36 +262,36 @@ def operator_figure(cfg):
     gs = fig.add_gridspec(2, 4, height_ratios=[0.95, 3.9], hspace=0.02, wspace=0.06, left=0.02, right=0.98, top=0.95, bottom=0.03)
     # (a) residual wrapper
     ax = fig.add_subplot(gs[0, :]); ax.set_xlim(0, 40); ax.set_ylim(0, 6.6); ax.set_aspect("equal"); ax.axis("off")
-    ax.text(0, 6.5, "(a) Operator block used at the five positions (identical for all variants)", fontsize=11, weight="bold", va="top")
+    ax.text(0, 6.5, "(a) Operator block used at the five positions (identical for all variants)", fontsize=16.5, weight="bold", va="top")
     cy, bh = 2.0, 1.5
     n_in = node(ax, 3.2, cy, 4.6, bh, "input $x$\n$H\\times W\\times C$", INP)
     n_gn = node(ax, 10.0, cy, 4.6, bh, "GroupNorm", CB)
     n_ge = node(ax, 16.4, cy, 4.0, bh, "GELU", CB)
-    n_op = node(ax, 24.0, cy, 8.2, bh, "Op$(\\cdot)$\nConv | DCNv2 | DCNv3 | DCNv4", "#ffffff")
+    n_op = node(ax, 24.0, cy, 8.2, bh, "Op$(\\cdot)$: one of (b)–(e)", "#ffffff", fs=12.5)
     for k, key in enumerate(OPCOL):
         ax.add_patch(Rectangle((19.9 + k * 2.05, cy - bh / 2 - 0.02), 2.05, 0.2, fc=OPCOL[key], ec=INK, lw=0.6, zorder=3))
     ax.add_patch(Circle((31.2, cy), 0.62, fc="#ffffff", ec=INK, lw=1.0, zorder=2))
-    ax.text(31.2, cy, "+", ha="center", va="center", fontsize=13, zorder=3)
+    ax.text(31.2, cy, "+", ha="center", va="center", fontsize=19.5, zorder=3)
     n_out = node(ax, 36.4, cy, 4.6, bh, "output $y$\n$H\\times W\\times C$", INP)
     for a_, b_ in ((n_in["r"], n_gn["l"]), (n_gn["r"], n_ge["l"]), (n_ge["r"], n_op["l"])):
         arrow(ax, [a_, b_])
     arrow(ax, [n_op["r"], (30.58, cy)]); arrow(ax, [(31.82, cy), n_out["l"]])
     ax.plot([5.9], [cy], marker="o", ms=3.5, color=INK, zorder=4)
     arrow(ax, [(5.9, cy), (5.9, 4.0), (31.2, 4.0), (31.2, cy + 0.62)])
-    ax.text(18.5, 4.12, "identity (residual)", ha="center", va="bottom", fontsize=8, style="italic")
+    ax.text(18.5, 4.12, "identity (residual)", ha="center", va="bottom", fontsize=12.0, style="italic")
     ax.text(0, 0.1, "$y = x + \\mathrm{Op}(\\mathrm{GELU}(\\mathrm{GN}(x)))$;  $C$ = 4$w$, 8$w$, 8$w$, 8$w$, 4$w$ at encoder levels 2 and 3, bottleneck, decoder levels 0 and 1.",
-            fontsize=8.5, color=GREY, va="bottom")
+            fontsize=12.8, color=GREY, va="bottom")
 
     def panel(col, title):
         a = fig.add_subplot(gs[1, col]); a.set_xlim(0, 10); a.set_ylim(0, 14.4); a.set_aspect("equal"); a.axis("off")
-        a.text(0.1, 14.3, title, fontsize=11, weight="bold", va="top")
+        a.text(0.1, 14.3, title, fontsize=16.5, weight="bold", va="top")
         return a
 
     BH = 1.5
     def params_note(a, op):
         c = 8 * w8[op]
         n = sum(p.numel() for p in make_op(op, c).parameters())
-        a.text(0.1, 0.0, f"{n / 1e3:.0f} k parameters at $C$ = {c} ($w$ = {w8[op]})", fontsize=8.5, color=GREY, va="bottom")
+        a.text(0.1, 0.0, f"{n / 1e3:.0f} k parameters at $C$ = {c} ($w$ = {w8[op]})", fontsize=12.8, color=GREY, va="bottom")
 
     cb = lambda op: OPCOL[op]
     # (b) regular convolution
@@ -298,7 +300,7 @@ def operator_figure(cfg):
     c_ = node(a, 5, 8.0, 7.0, 1.9, "Conv 3×3, $C\\rightarrow C$\nstride 1, padding 1, bias", cb("conv"), bold=True)
     o_ = node(a, 5, 4.0, 4.4, 1.2, "output ($H\\times W\\times C$)", INP)
     arrow(a, [x_["b"], c_["t"]]); arrow(a, [c_["b"], o_["t"]])
-    a.text(5.2, 10.1, "fixed 3×3 grid", fontsize=8, color=GREY, style="italic", va="center")
+    a.text(5.2, 10.1, "fixed 3×3 grid", fontsize=12.0, color=GREY, style="italic", va="center")
     params_note(a, "conv")
     # (c) DCNv2
     a = panel(1, "(c) DCNv2")
@@ -308,7 +310,7 @@ def operator_figure(cfg):
     dc = node(a, 5, 4.2, 8.8, 1.7, "DeformConv2d 3×3, $C\\rightarrow C$\nsample $x$ at $p+\\Delta p$, weight by $m$", cb("dcnv2"), bold=True)
     o_ = node(a, 5, 1.9, 4.6, 1.0, "output", INP)
     arrow(a, [(6.6, x_["b"][1]), (6.6, om["t"][1])])
-    arrow(a, [(3.6, x_["b"][1]), (3.6, dc["t"][1])]); a.text(3.35, 8.0, "value", fontsize=8, rotation=90, ha="right", va="center", style="italic")
+    arrow(a, [(3.6, x_["b"][1]), (3.6, dc["t"][1])]); a.text(3.35, 8.0, "value", fontsize=12.0, rotation=90, ha="right", va="center", style="italic")
     arrow(a, [om["b"], sp["t"]]); arrow(a, [(7.5, sp["b"][1]), (7.5, dc["t"][1])]); arrow(a, [dc["b"], o_["t"]])
     params_note(a, "dcnv2")
     # (d) DCNv3
@@ -316,17 +318,17 @@ def operator_figure(cfg):
     x_ = node(a, 5, 12.3, 4.6, 1.2, "input $x$", INP)
     ip = node(a, 2.0, 9.9, 3.4, BH, "input_proj\nLinear $C\\rightarrow C$", "#ffffff")
     dw = node(a, 7.0, 9.9, 5.6, BH, "depth-wise Conv 3×3\nLayerNorm, GELU", "#ffffff")
-    of = node(a, 5.6, 7.1, 2.6, 1.7, "offset\nLinear\n$C\\rightarrow 18G$", "#cfeedc", fs=8.2)
-    mk = node(a, 8.5, 7.1, 2.6, 1.7, "mask\nLinear $C\\rightarrow 9G$\nsoftmax (9)", "#cfeedc", fs=8.2)
+    of = node(a, 5.6, 7.1, 2.6, 1.7, "offset\nLinear\n$C\\rightarrow 18G$", "#cfeedc", fs=10)
+    mk = node(a, 8.5, 7.1, 2.6, 1.7, "mask\nLinear $C\\rightarrow 9G$\nsoftmax (9)", "#cfeedc", fs=10)
     dc = node(a, 5, 4.4, 9.0, 1.7, "DCNv3 sampling, $G$ = $C$/16 groups\nbilinear, 9 points per group", cb("dcnv3"), bold=True)
-    op_ = node(a, 5, 2.4, 4.6, 1.0, "output_proj  Linear $C\\rightarrow C$", "#ffffff", fs=8.2)
+    op_ = node(a, 5, 2.4, 6.6, 1.0, "output_proj  Linear $C\\rightarrow C$", "#ffffff", fs=11.5)
     arrow(a, [(3.4, x_["b"][1]), (3.4, ip["t"][1])])
     arrow(a, [(6.6, x_["b"][1]), (6.6, dw["t"][1])])
     arrow(a, [(5.6, dw["b"][1]), (5.6, of["t"][1])]); arrow(a, [(8.5, dw["b"][1]), (8.5, mk["t"][1])])
-    arrow(a, [(2.0, ip["b"][1]), (2.0, dc["t"][1])]); a.text(1.75, 7.1, "value", fontsize=8, rotation=90, ha="right", va="center", style="italic")
+    arrow(a, [(2.0, ip["b"][1]), (2.0, dc["t"][1])]); a.text(1.75, 7.1, "value", fontsize=12.0, rotation=90, ha="right", va="center", style="italic")
     arrow(a, [(5.6, of["b"][1]), (5.6, dc["t"][1])]); arrow(a, [(8.5, mk["b"][1]), (8.5, dc["t"][1])])
     arrow(a, [dc["b"], op_["t"]])
-    o_ = node(a, 5, 0.95, 4.6, 0.8, "output", INP, fs=8.2)
+    o_ = node(a, 5, 0.95, 4.6, 0.8, "output", INP, fs=12)
     arrow(a, [op_["b"], o_["t"]])
     params_note(a, "dcnv3")
     # (e) DCNv4
@@ -334,14 +336,14 @@ def operator_figure(cfg):
     x_ = node(a, 5, 12.3, 4.6, 1.2, "input $x$", INP)
     vp = node(a, 2.0, 9.9, 3.4, BH, "value_proj\nLinear $C\\rightarrow C$", "#ffffff")
     om = node(a, 7.0, 9.9, 5.6, BH, "offset_mask  Linear\n$C\\rightarrow 27G$ (zero-init)", "#ffffff")
-    sp = node(a, 7.0, 7.1, 5.6, 1.7, "per group: 18 offsets, 9 mask\nmask not normalised (no softmax)", "#e8d9f3", fs=8.2)
+    sp = node(a, 6.85, 7.1, 6.0, 1.7, "per group: 18 offsets, 9 mask\nmask not normalised (no softmax)", "#e8d9f3", fs=10.5)
     dc = node(a, 5, 4.4, 9.0, 1.7, "DCN sampling (shared core), $G$ = $C$/16\nbilinear, 9 points per group", cb("dcnv4"), bold=True)
-    op_ = node(a, 5, 2.4, 4.6, 1.0, "output_proj  Linear $C\\rightarrow C$", "#ffffff", fs=8.2)
+    op_ = node(a, 5, 2.4, 6.6, 1.0, "output_proj  Linear $C\\rightarrow C$", "#ffffff", fs=11.5)
     arrow(a, [(3.4, x_["b"][1]), (3.4, vp["t"][1])]); arrow(a, [(6.6, x_["b"][1]), (6.6, om["t"][1])])
     arrow(a, [(7.0, om["b"][1]), (7.0, sp["t"][1])])
-    arrow(a, [(2.0, vp["b"][1]), (2.0, dc["t"][1])]); a.text(1.75, 7.1, "value", fontsize=8, rotation=90, ha="right", va="center", style="italic")
+    arrow(a, [(2.0, vp["b"][1]), (2.0, dc["t"][1])]); a.text(1.75, 7.1, "value", fontsize=12.0, rotation=90, ha="right", va="center", style="italic")
     arrow(a, [(7.0, sp["b"][1]), (7.0, dc["t"][1])]); arrow(a, [dc["b"], op_["t"]])
-    o_ = node(a, 5, 0.95, 4.6, 0.8, "output", INP, fs=8.2)
+    o_ = node(a, 5, 0.95, 4.6, 0.8, "output", INP, fs=12)
     arrow(a, [op_["b"], o_["t"]])
     params_note(a, "dcnv4")
     for ext, kw in (("png", dict(dpi=300)), ("svg", {}), ("pdf", {})):

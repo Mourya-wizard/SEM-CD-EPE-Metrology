@@ -48,3 +48,10 @@ limits below in mind.
 Real CD-SEM images with traceable reference metrology on the same features (AFM or cross-section TEM), a calibrated
 edge model per material stack, static and dynamic repeatability across days, tool-to-tool matching, charging and
 shrinkage characterisation at the doses used, and the registration recipe validated against measured overlay/placement.
+
+## Real SEM datasets (Carinthia-S, Max Planck IC metal-2)
+- Both are image-only (no CAD): no registration, EPE or CAD-channel test on real data; they are used as segmentation checks.
+- Max Planck: one commercial chip (128 nm node, BSE, 14.65 nm/px), not resist CD-SEM. Labels (thresholding plus manual correction) sit 1-3 px (15-45 nm) from the visible edge with integer vertices, so absolute nm accuracy cannot be verified; only model differences on the same labels are meaningful.
+- Single captures: no repeated frames, so no true precision and no roughness/LER claim. Duplicate vias and missing tracks at image borders are possible; only the central 80% x 80% of each image is used, split by image (225 / 48 / 48).
+- The operator differences found (0.1-0.3 Dice points) are of the same order as the label accuracy.
+

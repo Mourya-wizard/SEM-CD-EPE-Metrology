@@ -1,0 +1,4 @@
+name: e17_maxplanck_conv_w32_s2
+op: conv
+seed: 2
+width: 32

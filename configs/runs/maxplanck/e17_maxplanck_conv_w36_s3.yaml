@@ -1,0 +1,4 @@
+name: e17_maxplanck_conv_w36_s3
+op: conv
+seed: 3
+width: 36

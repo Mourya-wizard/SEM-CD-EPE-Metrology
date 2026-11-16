@@ -27,7 +27,7 @@ def test_gradcam_and_offsets(op):
     m = UNet(in_ch=2, width=16, op=op).to(DEV).eval()
     x = torch.randn(1, 2, 64, 64, device=DEV)
     cams, attr, out, _ = ex.grad_cam(m, x, lambda o: o.mean())
-    assert set(cams) == {"mid", "dec_op1", "last"}
+    assert set(cams) == {"enc_op2", "enc_op3", "mid", "dec_op0", "dec_op1", "last"}   # five operator blocks + last decoder layer
     for c in cams.values():
         assert c.shape == (64, 64) and c.min() >= 0 and c.max() <= 1 + 1e-6
     assert attr.shape == (2,) and abs(attr.sum() - 1) < 1e-5

@@ -177,7 +177,9 @@ bias-aware registration the learned and classical EPE agree (5.15 vs 5.25 nm), s
 The learned model's advantage that remains is precision (0.44 vs 0.89 nm 3σ at 64 frames).
 
 ## 10. E11 results: Grad-CAM at each stage (2026-11-15)
-Files: `results/gradcam/`. Scalar = sum of predicted CD-gauge edge offsets; "inside features" = CAM mass inside printed shapes (area share 10.9%).
+> **Correction (2026-11-16):** the metrology score used CD probes only, which ViaSet tiles do not have, so ViaSet CAMs were empty and the simulated statistics below are understated. Fixed in `src/explain.py` (CD and contact probes). Corrected values from `results/gradcam/` (rebuilt): last-layer CAM mass inside features about 100% for every operator; CAD attribution share 6.0-8.6%; E6 bottleneck CAM inside features 3.3% (SEM + CAD) vs 36.8% (SEM only). Offset near/far numbers are unchanged. Figures were rebuilt with one layout covering all five operator blocks and the last layer (`tools/make_gradcam.py`); the first-version figures are no longer part of the repository.
+
+First-version analysis (superseded, see the correction above). Scalar = sum of predicted CD-gauge edge offsets; "inside features" = CAM mass inside printed shapes (area share 10.9%).
 - **Operators (SEM + CAD, simulated):** at the last deformable block and final decoder layer all four operators put ~50% of CAM mass inside
   features (4.6× chance) and none in the far background. The deepest block differs: U-Net 5% and DCNv2 21% inside features, DCNv3 3% and DCNv4 1%
   with 41% / 26% in the far background, i.e. the coarse deepest block of the DCN models carries a large background (context) component.
@@ -247,3 +249,59 @@ DCNv3 and conv-32 use the published runs for seeds 2–3 (their checkpoints no l
 
 **Decision.** No operator is adopted on simulated precision (G1 failed). DCNv3 and DCNv4 show a consistent real-SEM Dice gain (G2 passed) and a small, consistent precision gain,
 so both are carried into the placement experiment at width 36. DCNv2 is not (G2 failed, and its precision gain is the smallest).
+
+## 12. E17: a second real SEM dataset, Max Planck IC metal-2 (pre-registered 2026-11-16, before any E17 run)
+
+**Question.** Does the E16 real-SEM result (DCNv3 and DCNv4 beat conv-36 on Carinthia-S) hold on a second, independent real SEM dataset with a different structure
+(IC wiring tracks and vias instead of wafer defects)? Real data only; no CAD input is used anywhere (SEM image in, mask out), as for Carinthia-S.
+
+**Dataset (all facts from the dataset README, Edmond doi 10.17617/3.HY5SYN, CC BY 4.0).** 648 backscattered-electron SEM images (15 keV, 3 µs dwell, 4096 × 3536 px, **14.65 nm/px**, 10% overlap between neighbours) of the metal-1 and
+metal-2 layers of a commercial IC on a **128 nm** technology node. Only M2 is labelled (321 images): tracks as polygons and vias as circles. The labels were produced by thresholding / edge detection / filtering and
+then manually validated and corrected. M1 (327 images) has no labels and is not used. The SAMSEM artifact (Zenodo 21721262, MIT) publishes only this same dataset; its other 13 chips are not released, so it adds no data.
+
+**Limits that apply to every E17 number (also stated in the README).**
+1. Real wiring of one chip on one tool: it tests generalisation to another real structure, not lithography-resist CD-SEM metrology.
+2. Single captures: there are no repeated frames, so precision against dose cannot be measured directly. Precision is measured with added Gaussian noise (below), which is a proxy.
+3. The label edge is within about 1-3 px (15-45 nm) of the visible edge of these blurred images (checked visually), and polygon vertices are integers (1 px = 14.65 nm). **Absolute nm accuracy cannot be verified**; only differences
+   between models on the same labels are meaningful. No roughness or LER claim is possible (labels are straight polygons).
+4. The labels may contain duplicated vias and tracks spanning several images may be missing from a label file; the outer 10% of every image is therefore discarded (it is also the part duplicated in neighbouring images).
+5. Split by image, seed 0: 225 train / 48 val / 48 test images, never sharing pixels (kept regions of different images do not overlap). One chip: no unseen-chip generalisation is tested.
+
+**Protocol.** Target = tracks OR vias (binary). Models: `models.UNet(in_ch=1)` with the 1-channel output as a mask logit, trained from scratch exactly as the Carinthia-S runs (BCE + soft Dice, 3000 iterations, batch 8, AdamW lr 1e-3, dihedral augmentation,
+per-crop standardisation, best-validation-Dice checkpoint), on random 512 × 512 crops of the central region. Evaluation on the non-overlapping 512-tile grid of the central region of val / test images (1440 tiles each).
+Five models (conv-32, conv-36, DCNv2-36, DCNv3-36, DCNv4-36) × 3 seeds = 15 runs. Test is evaluated once, with the best-validation checkpoint; decisions use validation.
+
+**Metrics.** Dice; boundary F1 at 2 px; symmetric boundary distance (px and nm); per-component track width (2 × median distance-transform value on the skeleton, px and nm) error against the label: bias, mean absolute error (MAE), 3σ, and
+failure rate (component missed or |width error| > 3 px = 44 nm); precision = mean 3σ spread of the per-component width over 8 independent added-noise draws (σ = 10 and 20 grey levels) on 120 fixed test tiles.
+References: a global threshold on the smoothed, standardised image tuned on validation only (classical), and the E16 simulated-SEM models applied unchanged after ×2 / ×4 up-sampling (zero-shot; expected to fail, reported for completeness).
+
+**Gates (validation, DCN operator vs conv-36, 3 seeds each; same rule as E16 G2 plus not-worse checks).**
+- G1: mean val Dice ≥ conv-36 mean + 0.003 **and** higher on every seed.
+- G2: val boundary F1 not worse than conv-36 by more than 0.003 (mean).
+- G3: val width MAE not worse by more than 0.5 nm (mean).
+- G4: val width failure rate not worse by more than 0.5 percentage points (mean).
+An operator passes if G1-G4 all hold. **Expectation recorded in advance:** Dice is compressed near its ceiling on this dataset (a 40-iteration pilot already reaches val Dice 0.927) and the label noise (limit 3) is larger than the E16 effect size (+0.003), so a
+pass is not guaranteed; a fail on this dataset is an honest outcome and is reported as such. Equal-width conv-32 vs conv-36 is also reported (width effect).
+
+**Decision rule.** Pass on both E16 (Carinthia-S) and E17 → DCNv3/DCNv4 is supported as the operator for real SEM; pass on only one → the real-SEM advantage is dataset-dependent and is reported as such; fail on both → the E16 Carinthia-S gain is not general.
+
+### E17 results (evaluated 2026-11-16; validation decides, test reported once)
+
+15 runs finished (5 models × 3 seeds, 3000 iterations each, best checkpoint = last iteration for all). Mean over seeds (sd in brackets). Files: `results/maxplanck/e17-*.csv|json`.
+
+| Model | Val Dice | Val boundary F1 | Edge distance (nm) | Width MAE (nm) | Width failure rate |
+|---|---|---|---|---|---|
+| conv-32 | 0.9523 (0.0002) | 0.9192 | 15.9 | 25.5 | 19.4% |
+| conv-36 (reference) | 0.9523 (0.0002) | 0.9191 | 16.0 | 25.4 | 19.4% |
+| DCNv2-36 | 0.9530 (0.0005) | 0.9211 | 15.7 | 25.4 | 19.1% |
+| DCNv3-36 | 0.9528 (0.0007) | 0.9200 | 15.8 | 25.3 | 19.1% |
+| DCNv4-36 | 0.9549 (0.0002) | 0.9274 | 15.1 | 24.6 | 18.2% |
+
+Per-seed val Dice: conv-36 0.9523 / 0.9524 / 0.9521; DCNv2 0.9526 / 0.9535 / 0.9527; DCNv3 0.9535 / 0.9524 / 0.9524; DCNv4 0.9551 / 0.9547 / 0.9550.
+Test (once): Dice conv-36 0.9509, DCNv2 0.9516, DCNv3 0.9515, DCNv4 0.9537 (same order as validation).
+References: classical threshold (val-tuned) Dice 0.921, boundary F1 0.747, width MAE 41.6 nm, failure 38%; zero-shot simulator models Dice 0.68-0.82 (exploratory, not used for decisions).
+
+**Gates.** G2, G3, G4 hold for all three DCN operators. **G1 fails for all three**: DCNv4 is higher than conv-36 on every seed (+0.0024 to +0.0029) but its mean gain (+0.0026) is just below the pre-registered +0.003, so by the rule it is a fail; the gate is not relaxed after the fact. DCNv3's seed-1 lead (+0.0012) disappears on seeds 2 and 3; DCNv2 is within noise.
+**Noise-precision proxy.** Not informative: at σ = 10 conv-32 is best (22.4 nm) and DCNv4 worst (28.4 nm); at σ = 20 all models collapse (Dice 0.25-0.31). No operator claim is made from it.
+**Observations.** Width alone (conv-32 vs conv-36) changes nothing. Only DCNv4 shows a seed-consistent improvement and it is small (about 0.25 Dice points, 0.9 nm edge distance), comparable to the label accuracy limit (limit 3).
+**Decision (per the pre-registered rule).** Pass on E16 (Carinthia-S, DCNv3 and DCNv4) but not on E17 → the real-SEM advantage is **dataset-dependent**. DCNv4 is the only operator with a consistent, small gain on both real sets; DCNv3's E16 gain does not replicate and DCNv2 does not help. Not tested: whether longer training changes this (no run plateaued by 3000 iterations).

@@ -55,23 +55,56 @@ for lab, name in ((4, "pit"), (3, "particle"), (1, "scratch")):
     pr = z["probs"][pos[r.filename]] > 127
     real.append((f"{name} (class {lab})\nDice {r.dice:.2f}", img, gt, pr))
 
-fig = plt.figure(figsize=(18, 3.6))
-gs = fig.add_gridspec(1, 6, wspace=0.04)
-for i, (title, img) in enumerate(sim):
-    a = fig.add_subplot(gs[0, i]); a.imshow(img, cmap="gray", vmin=np.percentile(img, 1), vmax=np.percentile(img, 99.5))
-    for cc in measure.find_contours(Ts, 0.5):
-        a.plot(cc[:, 1], cc[:, 0], c="#4fc3f7", lw=0.8, ls="--")
-    for cc in measure.find_contours(Fs, 0.0):
-        a.plot(cc[:, 1], cc[:, 0], c="#ff5252", lw=1.0)
-    a.set_title(f"simulated SEM\n{title}", fontsize=10); a.axis("off")
-for i, (title, img, gt, pr) in enumerate(real):
-    a = fig.add_subplot(gs[0, 3 + i]); a.imshow(img, cmap="gray")
-    for cc in measure.find_contours(gt.astype(float), 0.5):
-        a.plot(cc[:, 1], cc[:, 0], c="white", lw=0.8, ls="--")
-    for cc in measure.find_contours(pr.astype(float), 0.5):
-        a.plot(cc[:, 1], cc[:, 0], c="#76ff03", lw=1.1)
-    a.set_title(f"real SEM: {title}", fontsize=10); a.axis("off")
-fig.text(0.25, 0.01, "dashed cyan = design   ·   red = exact printed contour (simulation truth)", ha="center", fontsize=9)
-fig.text(0.75, 0.01, "dashed white = annotated defect   ·   green = DCNv3 prediction (representative, median-Dice cases)", ha="center", fontsize=9)
-fig.savefig(os.path.join(out_dir, "banner.png"), dpi=110, bbox_inches="tight")
+# ---- real panel 2: Max Planck IC metal-2 (E17), DCNv4-36 seed 1, typical (median Dice) and via-rich test tiles
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import maxplanck as mp  # noqa: E402
+from make_gradcam import load_any  # noqa: E402
+
+mimg, mlab = mp.arrays()
+tl = mp.grid_tiles(mp.load_split()[1]["test"], mimg.shape[1:])
+dpt = pd.read_csv(os.path.join(ROOT, "checkpoints", "e17_maxplanck_dcnv4_w36_s1", "test_tiles.csv")).dice.to_numpy()
+vias = np.array([((mlab[k, y:y + mp.T, x:x + mp.T] >> 1) & 1).mean() for k, y, x in tl])
+mmod = load_any(cfg, "e17_maxplanck_dcnv4_w36_s1")[0]
+mp_panels = []
+for name, j in (("typical tile", int(np.argsort(dpt)[len(dpt) // 2])), ("via-rich tile", int(vias.argmax()))):
+    k, y, x = tl[j]
+    tile = np.array(mimg[k, y:y + mp.T, x:x + mp.T])
+    gt = (np.array(mlab[k, y:y + mp.T, x:x + mp.T]) & 3) > 0
+    pr = mp.predict(mmod, torch.as_tensor(tile[None], device="cuda"))[0].cpu().numpy() > 0.5
+    mp_panels.append((f"{name}\nDice {dpt[j]:.2f}", tile, gt, pr))
+
+import paperstyle  # noqa: E402
+
+paperstyle.use(17)
+sim2 = [sim[0], sim[2]]                                          # 64 and 2 frames
+real2 = [real[0], real[2]]                                       # pit, scratch
+fig = plt.figure(figsize=(18, 4.25))
+gs = fig.add_gridspec(1, 6, wspace=0.05, left=0.005, right=0.995, top=0.86, bottom=0.13)
+
+
+def show(k, img, title, gt=None, pr=None, col=None, design=None, truth=None, vlim=None):
+    a = fig.add_subplot(gs[0, k]); a.imshow(img, cmap="gray", **(vlim or {}))
+    if design is not None:
+        for cc in measure.find_contours(design, 0.5):
+            a.plot(cc[:, 1], cc[:, 0], c="#4fc3f7", lw=1.0, ls="--")
+        for cc in measure.find_contours(truth, 0.0):
+            a.plot(cc[:, 1], cc[:, 0], c="#ff5252", lw=1.4)
+    if gt is not None:
+        for cc in measure.find_contours(gt.astype(float), 0.5):
+            a.plot(cc[:, 1], cc[:, 0], c="white", lw=1.0, ls="--")
+        for cc in measure.find_contours(pr.astype(float), 0.5):
+            a.plot(cc[:, 1], cc[:, 0], c=col, lw=1.4)
+    a.set_title(title, fontsize=17, linespacing=1.15); a.axis("off")
+
+
+for k, (title, img) in enumerate(sim2):
+    show(k, img, f"Simulated SEM\n{title}", design=Ts, truth=Fs, vlim=dict(vmin=np.percentile(img, 1), vmax=np.percentile(img, 99.5)))
+for k, (title, img, gt, pr) in enumerate(real2):
+    show(2 + k, img, "Carinthia-S" + "\n" + title.split("\n")[0].split(" (")[0] + ", Dice " + title.split("Dice ")[1], gt, pr, "#76ff03")
+for k, (title, img, gt, pr) in enumerate(mp_panels):
+    show(4 + k, img, "Max Planck metal-2" + "\n" + title.replace("\n", ", "), gt, pr, "#ffb300")
+for x, txt in ((1 / 6, "design (dashed cyan), exact printed contour (red)"), (0.5, "annotation (dashed white), DCNv3 prediction (green)"),
+               (5 / 6, "label (dashed white), DCNv4 prediction (amber)")):
+    fig.text(x, 0.055, txt, ha="center", va="center", fontsize=15)
+fig.savefig(os.path.join(out_dir, "banner.png"), dpi=130)
 print(os.path.join(out_dir, "banner.png"))

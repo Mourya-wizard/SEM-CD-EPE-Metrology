@@ -90,8 +90,13 @@ def main():
     run("tools/results_snapshot.py")
     run("src/plots.py", "figures")
     run("tools/plot_lcdu.py")
-    run("tools/make_dashboard.py")
-    run("tools/make_banner.py")
+    # README dashboard and banner also use E12-E17 results (run separately, see README "Reproduction"); skip until they exist
+    needed = ("results/registration_test/test_summary_baseline_bias.csv", "results/roadmap_gates/e16-real-summary.csv", "results/maxplanck/e17-per-seed.csv")
+    if all(os.path.exists(os.path.join(ROOT, f)) for f in needed):
+        run("tools/make_dashboard.py")
+        run("tools/make_banner.py")
+    else:
+        print("[reproduce] README dashboard/banner skipped: E12-E17 results not present yet", flush=True)
     print("[reproduce] done: results/ and docs/RESULTS.md are up to date", flush=True)
 
 

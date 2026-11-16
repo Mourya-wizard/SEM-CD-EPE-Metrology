@@ -1,4 +1,4 @@
-"""Classical baseline (validation-tuned, frozen) on the TEST set under both registrations -> results/roadmap_v2/test_summary_classical_{cad,bias}.csv
+"""Classical baseline (validation-tuned, frozen) on the TEST set under both registrations -> results/registration_test/test_summary_classical_{cad,bias}.csv
   python tools/classical_test.py [workers]"""
 import json
 import os
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     cfg = load_config()
     cp = ev.classical_params(cfg, json.load(open(os.path.join(cfg["paths"]["results"], "classical_baseline", "classical_tuning.json"))))
     truth = ev.load_truth(cfg, "test")
-    d = os.path.join(cfg["paths"]["results"], "roadmap_v2")
+    d = os.path.join(cfg["paths"]["results"], "registration_test")
     os.makedirs(d, exist_ok=True)
     for mode in ("cad", "bias"):
         cfg["registration"]["mode"] = mode

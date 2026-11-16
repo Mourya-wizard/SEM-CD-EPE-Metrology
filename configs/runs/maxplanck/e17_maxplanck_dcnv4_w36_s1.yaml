@@ -1,0 +1,4 @@
+name: e17_maxplanck_dcnv4_w36_s1
+op: dcnv4
+seed: 1
+width: 36

@@ -1,4 +1,4 @@
-"""Summarise one TEST measurement file (per kind x dose, tile-bootstrap CIs) into results/roadmap_v2/test_summary_<out>.csv.
+"""Summarise one TEST measurement file (per kind x dose, tile-bootstrap CIs) into results/registration_test/test_summary_<out>.csv.
   python tools/summarize_run.py <meas_name> <out_name>      e.g. cadtest_dcnv3_semonly_s1_regbias__learned baseline_bias
 Kept apart from results/model_eval/ so that retrained models never overwrite the published summaries."""
 import os
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     split = sys.argv[3] if len(sys.argv) > 3 else "test"
     cfg = load_config()
     s = ev.summarize(cfg, ev.load_meas(cfg, split, meas), ev.load_truth(cfg, split), out, n_boot=1000)
-    d = os.path.join(cfg["paths"]["results"], "roadmap_v2")
+    d = os.path.join(cfg["paths"]["results"], "registration_test")
     os.makedirs(d, exist_ok=True)
     s.to_csv(os.path.join(d, f"{split}_summary_{out}.csv"), index=False)
     print("saved", out)

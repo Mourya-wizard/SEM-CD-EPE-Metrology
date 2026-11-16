@@ -1,0 +1,23 @@
+{
+ "dcnv2_w36": {
+  "G1_val_dice_mean_ge_conv_plus_0.003_and_every_seed": false,
+  "G2_bf1_not_worse_0.003": true,
+  "G3_width_mae_not_worse_0.5nm": true,
+  "G4_fail_rate_not_worse_0.5pt": true,
+  "pass_all": false
+ },
+ "dcnv3_w36": {
+  "G1_val_dice_mean_ge_conv_plus_0.003_and_every_seed": false,
+  "G2_bf1_not_worse_0.003": true,
+  "G3_width_mae_not_worse_0.5nm": true,
+  "G4_fail_rate_not_worse_0.5pt": true,
+  "pass_all": false
+ },
+ "dcnv4_w36": {
+  "G1_val_dice_mean_ge_conv_plus_0.003_and_every_seed": false,
+  "G2_bf1_not_worse_0.003": true,
+  "G3_width_mae_not_worse_0.5nm": true,
+  "G4_fail_rate_not_worse_0.5pt": true,
+  "pass_all": false
+ }
+}

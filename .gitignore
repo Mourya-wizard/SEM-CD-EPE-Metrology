@@ -26,6 +26,7 @@ handoff/
 configs/queue/
 configs/queue_archive/
 configs/runs/pilot/
+configs/runs/maxplanck/pilot_*.yaml
 configs/runs/smoke/
 results/queue*
 results/raw/

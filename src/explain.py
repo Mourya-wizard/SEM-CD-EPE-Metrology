@@ -15,11 +15,12 @@ from scipy import ndimage
 
 import measure as ms
 
-STRIDE = {"mid": 16, "dec_op1": 4, "last": 1}
+STRIDE = {"mid": 16, "dec_op1": 4, "last": 1, "enc_op2": 4, "enc_op3": 8, "dec_op0": 8}
 
 
 def layers_of(model):
-    return {"mid": model.mid[2], "dec_op1": model.dec_op["1"], "last": model.dec[3]}
+    return {"enc_op2": model.enc_op["2"], "enc_op3": model.enc_op["3"], "mid": model.mid[2], "dec_op0": model.dec_op["0"],
+            "dec_op1": model.dec_op["1"], "last": model.dec[3]}
 
 
 def grad_cam(model, x, score_fn, layers=None):
@@ -48,7 +49,7 @@ def grad_cam(model, x, score_fn, layers=None):
 
 def metrology_score(cfg, probes, A, b):
     """Score function for grad_cam on a TSDF model output (1,1,S,S, units of the truncation distance)."""
-    cd = probes[probes.kind == "cd"].reset_index(drop=True)
+    cd = probes[probes.kind.isin(("cd", "contact"))].reset_index(drop=True)      # MetalSet tiles carry CD gauges, ViaSet tiles contact gauges (v1 used "cd" only: empty score, blank CAMs on ViaSet)
     q, ns, scale = ms.probes_to_sem(cd, A, b)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     qt, nt, sc = (torch.as_tensor(v, device=dev) for v in (q, ns, scale))
